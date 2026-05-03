@@ -6,8 +6,10 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:anytime/api/podcast/podcast_api.dart';
+import 'package:anytime/api/podcast/vtt_parser.dart';
 import 'package:anytime/core/environment.dart';
 import 'package:anytime/entities/transcript.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:podcast_search/podcast_search.dart' as podcast_search;
 
@@ -92,6 +94,12 @@ class MobilePodcastApi extends PodcastApi {
 
   @override
   Future<podcast_search.Transcript> loadTranscript(TranscriptUrl transcriptUrl) async {
+    // For VTT format, use our custom parser that preserves formatting tags
+    if (transcriptUrl.type == TranscriptFormat.vtt) {
+      return _loadVttWithFormatting(transcriptUrl.url);
+    }
+
+    // For other formats, use podcast_search library
     late podcast_search.TranscriptFormat format;
 
     switch (transcriptUrl.type) {
@@ -111,6 +119,27 @@ class MobilePodcastApi extends PodcastApi {
 
     return podcast_search.Feed.loadTranscriptByUrl(
         transcriptUrl: podcast_search.TranscriptUrl(url: transcriptUrl.url, type: format));
+  }
+
+  Future<podcast_search.Transcript> _loadVttWithFormatting(String url) async {
+    final client = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 20),
+      ),
+    );
+
+    final response = await client.get(
+      url,
+      options: Options(responseType: ResponseType.plain),
+    );
+
+    if (response.statusCode == 200 && response.data is String) {
+      final vttParser = VttParserWithFormatting();
+      return vttParser.parse(response.data.toString());
+    }
+
+    return podcast_search.Transcript();
   }
 
   static Future<podcast_search.SearchResult> _search(Map<String, String?> searchParams) {

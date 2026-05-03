@@ -13,6 +13,7 @@ import 'package:anytime/services/audio/audio_player_service.dart';
 import 'package:anytime/state/queue_event_state.dart';
 import 'package:anytime/state/transcript_state_event.dart';
 import 'package:anytime/ui/podcast/person_avatar.dart';
+import 'package:anytime/ui/podcast/transcript_text.dart';
 import 'package:anytime/ui/widgets/platform_progress_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -402,9 +403,11 @@ class SubtitleWidget extends StatelessWidget {
                   : '${_formatDuration(subtitle.start)} - ${subtitle.speaker}',
               style: Theme.of(context).textTheme.titleSmall,
             ),
-            Text(
-              subtitle.data!,
-              style: Theme.of(context).textTheme.titleMedium,
+            Text.rich(
+              buildTranscriptTextSpan(
+                text: subtitle.data ?? '',
+                baseStyle: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             const Padding(padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 16.0))
           ],
