@@ -9,6 +9,37 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const baseStyle = TextStyle(fontSize: 16.0);
 
+  group('parseTranscriptText', () {
+    test('returns both plain text and textSpan', () {
+      final parsed = parseTranscriptText(
+        rawText: 'Hello <b>world</b>',
+        baseStyle: baseStyle,
+      );
+
+      expect(parsed.plainText, 'Hello world');
+      expect(parsed.textSpan.toPlainText(), 'Hello world');
+    });
+
+    test('plainText strips all formatting for search', () {
+      final parsed = parseTranscriptText(
+        rawText: '<b>bold</b> and <i>italic</i> and <u>underline</u>',
+        baseStyle: baseStyle,
+      );
+
+      expect(parsed.plainText, 'bold and italic and underline');
+    });
+
+    test('textSpan preserves formatting for display', () {
+      final parsed = parseTranscriptText(
+        rawText: '<b>bold</b>',
+        baseStyle: baseStyle,
+      );
+
+      final children = _flattenSpans(parsed.textSpan);
+      expect(children.any((s) => s.style?.fontWeight == FontWeight.bold), true);
+    });
+  });
+
   group('buildTranscriptTextSpan', () {
     test('plain text renders as a single normal span', () {
       final span = buildTranscriptTextSpan(
@@ -146,6 +177,52 @@ void main() {
       expect(span.toPlainText(), 'bold');
       final children = _flattenSpans(span);
       expect(children.any((s) => s.style?.fontWeight == FontWeight.bold), true);
+    });
+
+    test('script tags are stripped including content', () {
+      final span = buildTranscriptTextSpan(
+        text: '<script>alert(1)</script>Hello',
+        baseStyle: baseStyle,
+      );
+
+      expect(span.toPlainText(), 'Hello');
+    });
+
+    test('style tags are stripped including content', () {
+      final span = buildTranscriptTextSpan(
+        text: '<style>body{color:red}</style>Hello',
+        baseStyle: baseStyle,
+      );
+
+      expect(span.toPlainText(), 'Hello');
+    });
+
+    test('attributes on allowed tags are ignored', () {
+      final span = buildTranscriptTextSpan(
+        text: '<b onclick="alert(1)">bold</b>',
+        baseStyle: baseStyle,
+      );
+
+      expect(span.toPlainText(), 'bold');
+      final children = _flattenSpans(span);
+      expect(children.any((s) => s.style?.fontWeight == FontWeight.bold), true);
+    });
+
+    test('deeply nested tags render correctly', () {
+      final span = buildTranscriptTextSpan(
+        text: '<b><i><u>triple nested</u></i></b>',
+        baseStyle: baseStyle,
+      );
+
+      expect(span.toPlainText(), 'triple nested');
+      final children = _flattenSpans(span);
+      expect(
+        children.any((s) =>
+            s.style?.fontWeight == FontWeight.bold &&
+            s.style?.fontStyle == FontStyle.italic &&
+            s.style?.decoration == TextDecoration.underline),
+        true,
+      );
     });
   });
 }

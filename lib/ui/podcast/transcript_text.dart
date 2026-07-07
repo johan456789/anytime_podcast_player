@@ -2,9 +2,42 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:anytime/core/transcript_text.dart' as core;
 import 'package:flutter/material.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' show parseFragment;
+
+/// Parsed transcript text containing both plain text and styled representation.
+///
+/// Use [plainText] for search and accessibility.
+/// Use [textSpan] for rich text rendering.
+class ParsedTranscriptText {
+  final String plainText;
+  final TextSpan textSpan;
+
+  const ParsedTranscriptText({
+    required this.plainText,
+    required this.textSpan,
+  });
+}
+
+/// Parses transcript text and returns both plain text and styled TextSpan.
+///
+/// This is the primary API for transcript text handling in the UI layer.
+/// It combines plain text extraction (for search/accessibility) with
+/// rich text building (for display).
+ParsedTranscriptText parseTranscriptText({
+  required String rawText,
+  required TextStyle? baseStyle,
+}) {
+  final plainText = core.extractPlainText(rawText);
+  final textSpan = buildTranscriptTextSpan(text: rawText, baseStyle: baseStyle);
+
+  return ParsedTranscriptText(
+    plainText: plainText,
+    textSpan: textSpan,
+  );
+}
 
 /// Builds a [TextSpan] tree from raw transcript text that may contain
 /// basic inline HTML formatting tags.
@@ -16,6 +49,7 @@ import 'package:html/parser.dart' show parseFragment;
 ///
 /// Unknown tags render their text content with inherited style.
 /// Malformed markup degrades to readable plain text.
+/// Script and style tags are stripped entirely (including their content).
 TextSpan buildTranscriptTextSpan({
   required String text,
   required TextStyle? baseStyle,
@@ -52,7 +86,14 @@ List<TextSpan> _buildSpansFromNodes(List<dom.Node> nodes, TextStyle? style) {
         spans.add(TextSpan(text: text, style: style));
       }
     } else if (node is dom.Element) {
-      final newStyle = _applyTagStyle(node.localName, style);
+      final tagName = node.localName?.toLowerCase();
+
+      // Skip script and style content entirely
+      if (tagName == 'script' || tagName == 'style') {
+        continue;
+      }
+
+      final newStyle = _applyTagStyle(tagName, style);
       final childSpans = _buildSpansFromNodes(node.nodes, newStyle);
 
       if (childSpans.isNotEmpty) {

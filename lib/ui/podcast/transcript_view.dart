@@ -403,11 +403,21 @@ class SubtitleWidget extends StatelessWidget {
                   : '${_formatDuration(subtitle.start)} - ${subtitle.speaker}',
               style: Theme.of(context).textTheme.titleSmall,
             ),
-            Text.rich(
-              buildTranscriptTextSpan(
-                text: subtitle.data ?? '',
-                baseStyle: Theme.of(context).textTheme.titleMedium,
-              ),
+            Builder(
+              builder: (context) {
+                final parsed = parseTranscriptText(
+                  rawText: subtitle.data ?? '',
+                  baseStyle: Theme.of(context).textTheme.titleMedium,
+                );
+                // Wrap with Semantics so screen readers get plain text,
+                // not raw markup tags.
+                return Semantics(
+                  label: parsed.plainText,
+                  child: ExcludeSemantics(
+                    child: Text.rich(parsed.textSpan),
+                  ),
+                );
+              },
             ),
             const Padding(padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 16.0))
           ],
