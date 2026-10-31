@@ -6,6 +6,7 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:anytime/api/podcast/podcast_api.dart';
+import 'package:anytime/core/transcript_text.dart';
 import 'package:anytime/core/utils.dart';
 import 'package:anytime/entities/chapter.dart';
 import 'package:anytime/entities/downloadable.dart';
@@ -543,24 +544,28 @@ class MobilePodcastService extends PodcastService {
           if (transcriptUrl.type == TranscriptFormat.json) {
             if (groupSubtitle.speaker == subtitle.speaker &&
                 (subtitle.start.compareTo(groupSubtitle.start + threshold) < 0 || subtitle.data.length == 1)) {
-              /// We need to handle transcripts that have spaces between sentences, and those
-              /// which do not.
-              if (groupSubtitle.data != null &&
-                  (groupSubtitle.data!.endsWith(' ') || subtitle.data.startsWith(' ') || subtitle.data.length == 1)) {
-                data = '${groupSubtitle.data}${subtitle.data}';
-              } else {
-                data = '${groupSubtitle.data} ${subtitle.data.trim()}';
-              }
+              /// Merge fragments using safe formatting-aware concatenation.
+              /// This handles cases where markup may be split across fragments
+              /// by degrading to plain text if tags are unbalanced.
+              final addSpace = !(groupSubtitle.data != null &&
+                  (groupSubtitle.data!.endsWith(' ') || subtitle.data.startsWith(' ') || subtitle.data.length == 1));
+              data = mergeTranscriptFragments(
+                groupSubtitle.data ?? '',
+                subtitle.data,
+                addSpace: addSpace,
+              );
               completeGroup = false;
             }
           } else {
             if (groupSubtitle.start == subtitle.start) {
-              if (groupSubtitle.data != null &&
-                  (groupSubtitle.data!.endsWith(' ') || subtitle.data.startsWith(' ') || subtitle.data.length == 1)) {
-                data = '${groupSubtitle.data}${subtitle.data}';
-              } else {
-                data = '${groupSubtitle.data} ${subtitle.data.trim()}';
-              }
+              /// Merge fragments using safe formatting-aware concatenation.
+              final addSpace = !(groupSubtitle.data != null &&
+                  (groupSubtitle.data!.endsWith(' ') || subtitle.data.startsWith(' ') || subtitle.data.length == 1));
+              data = mergeTranscriptFragments(
+                groupSubtitle.data ?? '',
+                subtitle.data,
+                addSpace: addSpace,
+              );
               completeGroup = false;
             }
           }

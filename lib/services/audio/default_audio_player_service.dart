@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:anytime/core/environment.dart';
+import 'package:anytime/core/transcript_text.dart';
 import 'package:anytime/core/utils.dart';
 import 'package:anytime/entities/chapter.dart';
 import 'package:anytime/entities/downloadable.dart';
@@ -495,7 +496,10 @@ class DefaultAudioPlayerService extends AudioPlayerService {
     search = search.trim();
 
     final subtitles = _currentEpisode!.transcript!.subtitles.where((subtitle) {
-      return subtitle.data!.toLowerCase().contains(search.toLowerCase());
+      // Use plain text for search matching so markup tags don't affect results.
+      // For example, searching "bold" should match "<b>bold</b>".
+      final plainText = extractPlainText(subtitle.data ?? '');
+      return plainText.toLowerCase().contains(search.toLowerCase());
     }).toList();
 
     _currentTranscript = Transcript(
