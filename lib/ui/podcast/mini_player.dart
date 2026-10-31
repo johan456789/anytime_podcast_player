@@ -135,6 +135,7 @@ class _MiniPlayerBuilderState extends State<_MiniPlayerBuilder> with SingleTicke
                             stream: audioBloc.playingState,
                             builder: (context, stateSnapshot) {
                               var playing = stateSnapshot.data == AudioState.playing;
+                              var buffering = stateSnapshot.data == AudioState.buffering;
 
                               return Row(
                                 mainAxisAlignment: MainAxisAlignment.start,
@@ -198,13 +199,13 @@ class _MiniPlayerBuilderState extends State<_MiniPlayerBuilder> with SingleTicke
                                             side: BorderSide(color: theme.colorScheme.surface, width: 0.0)),
                                       ),
                                       onPressed: () {
-                                        if (playing) {
-                                          audioBloc.transitionState(TransitionState.fastforward);
+                                        if (!buffering) {
+                                          audioBloc.transitionState(TransitionState.rewind);
                                         }
                                       },
                                       child: Icon(
-                                        Icons.forward_30,
-                                        semanticLabel: L.of(context)!.fast_forward_button_label,
+                                        Icons.replay_10,
+                                        semanticLabel: L.of(context)!.rewind_button_label,
                                         size: 36.0,
                                       ),
                                     ),
@@ -233,6 +234,27 @@ class _MiniPlayerBuilderState extends State<_MiniPlayerBuilder> with SingleTicke
                                         icon: AnimatedIcons.play_pause,
                                         color: theme.iconTheme.color,
                                         progress: _playPauseController,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 52.0,
+                                    width: 52.0,
+                                    child: TextButton(
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 0.0),
+                                        shape: CircleBorder(
+                                            side: BorderSide(color: theme.colorScheme.surface, width: 0.0)),
+                                      ),
+                                      onPressed: () {
+                                        if (!buffering) {
+                                          audioBloc.transitionState(TransitionState.fastforward);
+                                        }
+                                      },
+                                      child: Icon(
+                                        Icons.forward_30,
+                                        semanticLabel: L.of(context)!.fast_forward_button_label,
+                                        size: 36.0,
                                       ),
                                     ),
                                   ),
