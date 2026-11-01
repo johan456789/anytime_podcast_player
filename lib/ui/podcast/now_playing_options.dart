@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:math' as math;
+
 import 'package:anytime/bloc/podcast/queue_bloc.dart';
 import 'package:anytime/l10n/L.dart';
 import 'package:anytime/state/queue_event_state.dart';
@@ -29,9 +31,61 @@ import 'package:provider/provider.dart';
 ///
 class NowPlayingOptionsSelector extends StatefulWidget {
   final double? scrollPos;
+
+  /// Height reserved on the now playing screen for the collapsed sheet.
+  ///
+  /// Note that the actual collapsed height of the sheet is derived from its
+  /// content - see [collapsedSheetHeight] - and not from this value.
   static const baseSize = 68.0;
 
+  /// Padding either side of each tab label, matching [TabBar.labelPadding].
+  static const double _tabLabelHorizontalPadding = 16.0;
+
+  /// Height of the [SliderHandle]: 8.0 padding above and below a 4.0 high handle.
+  static const double _handleHeight = 20.0;
+
+  /// Padding above and below each tab label.
+  static const double _tabLabelVerticalPadding = 8.0;
+
+  /// Height the [TabBar] adds below each tab for the selection indicator.
+  static const double _tabIndicatorWeight = 2.0;
+
+  /// Space between the tab bar and the tab content.
+  static const double _tabContentTopPadding = 12.0;
+
   const NowPlayingOptionsSelector({super.key, this.scrollPos});
+
+  /// The height the sheet requires when fully collapsed: the drag handle, the
+  /// tab bar and the gap above the tab content.
+  ///
+  /// The tab labels are measured with the current [TextScaler] and laid out
+  /// within the width a tab actually has - [tabBarWidth] split between the two
+  /// tabs - so that the collapsed sheet is always tall enough to display its
+  /// content without a bottom overflow, whatever font size the user has
+  /// selected and however many lines the labels need.
+  static double collapsedSheetHeight(BuildContext context, {required double tabBarWidth}) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final labelStyle = Theme.of(context).textTheme.labelLarge;
+    final labelWidth = math.max(0.0, tabBarWidth / 2 - _tabLabelHorizontalPadding * 2);
+
+    final labelHeight = [
+      L.of(context)!.up_next_queue_label.toUpperCase(),
+      L.of(context)!.transcript_label.toUpperCase(),
+    ].map((label) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: label, style: labelStyle),
+        textDirection: TextDirection.ltr,
+        textScaler: textScaler,
+      )..layout(maxWidth: labelWidth);
+
+      final height = textPainter.height;
+      textPainter.dispose();
+
+      return height;
+    }).reduce(math.max);
+
+    return _handleHeight + _tabLabelVerticalPadding + labelHeight + _tabLabelVerticalPadding + _tabIndicatorWeight + _tabContentTopPadding;
+  }
 
   @override
   State<NowPlayingOptionsSelector> createState() => _NowPlayingOptionsSelectorState();
@@ -44,8 +98,24 @@ class _NowPlayingOptionsSelectorState extends State<NowPlayingOptionsSelector> {
   Widget build(BuildContext context) {
     final queueBloc = Provider.of<QueueBloc>(context, listen: false);
     final theme = Theme.of(context);
-    final windowHeight = MediaQuery.sizeOf(context).height;
-    final minSize = NowPlayingOptionsSelector.baseSize / (windowHeight - NowPlayingOptionsSelector.baseSize);
+
+    /// A [DraggableScrollableSheet] sizes its child as a fraction of the height
+    /// available to it, which is less than the window height once safe area
+    /// insets and the floating player above this widget are taken into account.
+    /// Sizing the collapsed sheet against a [LayoutBuilder] ensures the handle,
+    /// tab bar and padding always fit without overflowing; previously both the
+    /// collapsed height and the fraction were hardcoded against the window
+    /// height, which could leave the sheet shorter than its own content.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return _buildDraggableSheet(context, queueBloc, theme, constraints);
+      },
+    );
+  }
+
+  DraggableScrollableSheet _buildDraggableSheet(BuildContext context, QueueBloc queueBloc, ThemeData theme, BoxConstraints constraints) {
+    final collapsedHeight = NowPlayingOptionsSelector.collapsedSheetHeight(context, tabBarWidth: constraints.maxWidth);
+    final minSize = constraints.maxHeight > 0.0 ? (collapsedHeight / constraints.maxHeight).clamp(0.0, 1.0) : 0.0;
 
     return DraggableScrollableSheet(
       initialChildSize: minSize,
@@ -135,6 +205,8 @@ class _NowPlayingOptionsSelectorState extends State<NowPlayingOptionsSelector> {
                                 },
                                 automaticIndicatorColorAdjustment: false,
                                 indicatorPadding: EdgeInsets.zero,
+                                indicatorWeight: NowPlayingOptionsSelector._tabIndicatorWeight,
+                                labelPadding: const EdgeInsets.symmetric(horizontal: NowPlayingOptionsSelector._tabLabelHorizontalPadding),
 
                                 /// Little hack to hide the indicator when closed
                                 indicatorColor: draggableController != null &&
@@ -143,14 +215,20 @@ class _NowPlayingOptionsSelectorState extends State<NowPlayingOptionsSelector> {
                                     : null,
                                 tabs: [
                                   Padding(
-                                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                                    padding: const EdgeInsets.only(
+                                      top: NowPlayingOptionsSelector._tabLabelVerticalPadding,
+                                      bottom: NowPlayingOptionsSelector._tabLabelVerticalPadding,
+                                    ),
                                     child: Text(
                                       L.of(context)!.up_next_queue_label.toUpperCase(),
                                       style: theme.textTheme.labelLarge,
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                                    padding: const EdgeInsets.only(
+                                      top: NowPlayingOptionsSelector._tabLabelVerticalPadding,
+                                      bottom: NowPlayingOptionsSelector._tabLabelVerticalPadding,
+                                    ),
                                     // If the episode does not support transcripts, grey out
                                     // the option.
                                     child: snapshot.hasData &&
@@ -172,7 +250,7 @@ class _NowPlayingOptionsSelectorState extends State<NowPlayingOptionsSelector> {
                               );
                             }),
                       ),
-                      const Padding(padding: EdgeInsets.only(bottom: 12.0)),
+                      const Padding(padding: EdgeInsets.only(bottom: NowPlayingOptionsSelector._tabContentTopPadding)),
                       const Expanded(
                         child: TabBarView(
                           children: [
