@@ -271,6 +271,46 @@ void main() {
       // The user was reading above the end, so the keyboard must not yank
       // the list back down to the newest message.
       expect(position.maxScrollExtent - position.pixels, greaterThanOrEqualTo(240.0));
+
+      // Closing the keyboard must leave the reading position alone too.
+      final pixelsWhileReading = position.pixels;
+
+      await pumpChat(tester);
+      await tester.pumpAndSettle();
+
+      expect(position.pixels, pixelsWhileReading);
+    });
+
+    testWidgets('open and close cycle restores the exact scroll position', (tester) async {
+      usePhoneSurface(tester);
+
+      await pumpChat(tester);
+
+      for (var i = 0; i < 4; i++) {
+        await exchange(tester, 'Question $i');
+      }
+
+      final position = listPosition(tester);
+      expect(position.pixels, position.maxScrollExtent, reason: 'precondition: pinned to the newest message');
+
+      final pixelsBefore = position.pixels;
+      final maxBefore = position.maxScrollExtent;
+
+      await pumpChat(tester, viewInsets: const EdgeInsets.only(bottom: 300.0));
+      await tester.pumpAndSettle();
+
+      // Opening must actually scroll the list to keep the newest message
+      // above the input.
+      expect(position.maxScrollExtent, greaterThan(maxBefore));
+      expect(position.pixels, position.maxScrollExtent);
+
+      await pumpChat(tester);
+      await tester.pumpAndSettle();
+
+      // Closing the keyboard must return the list to the exact same place;
+      // open and close must not drift the scroll position.
+      expect(position.maxScrollExtent, maxBefore);
+      expect(position.pixels, pixelsBefore);
     });
 
     testWidgets('pins back to the newest message when reading near the end', (tester) async {
