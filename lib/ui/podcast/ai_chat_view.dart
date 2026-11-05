@@ -23,6 +23,10 @@ class AiChatView extends StatefulWidget {
 }
 
 class _AiChatViewState extends State<AiChatView> {
+  /// How close to the end of the message list, in logical pixels, counts as
+  /// reading the latest messages for auto-scroll purposes.
+  static const double _nearBottomThreshold = 240.0;
+
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
 
@@ -64,7 +68,7 @@ class _AiChatViewState extends State<AiChatView> {
     }
 
     final position = _scrollController.position;
-    final nearBottom = position.maxScrollExtent - position.pixels < 240;
+    final nearBottom = position.maxScrollExtent - position.pixels < _nearBottomThreshold;
 
     if (newMessage || nearBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -147,6 +151,10 @@ class _AiChatViewState extends State<AiChatView> {
   /// Keeps the newest message visible when the keyboard appears or closes;
   /// the message list shrinks or grows with the inset and the last reply
   /// would otherwise end up hidden beneath the input row.
+  ///
+  /// As with [_scheduleAutoScroll], the user is only kept pinned to the end
+  /// when they were already reading near it; a reading position further up
+  /// the conversation is preserved across the inset change.
   void _scheduleKeyboardScroll(double bottomInset) {
     if (bottomInset == _lastBottomInset) {
       return;
@@ -154,7 +162,16 @@ class _AiChatViewState extends State<AiChatView> {
 
     _lastBottomInset = bottomInset;
 
-    if (_scrollController.hasClients) {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    // Measured now, before this frame lays out with the new inset, so it
+    // reflects where the user was actually reading.
+    final position = _scrollController.position;
+    final nearBottom = position.maxScrollExtent - position.pixels < _nearBottomThreshold;
+
+    if (nearBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
