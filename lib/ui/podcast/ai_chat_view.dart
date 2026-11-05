@@ -28,6 +28,7 @@ class _AiChatViewState extends State<AiChatView> {
 
   int _lastMessageCount = 0;
   int _lastTextLength = 0;
+  double _lastBottomInset = 0.0;
 
   @override
   void dispose() {
@@ -119,67 +120,110 @@ class _AiChatViewState extends State<AiChatView> {
 
           _scheduleAutoScroll(state.messages.length, state.messages.isEmpty ? 0 : state.messages.last.text.length);
 
-          return Column(
-            children: [
-              Expanded(
-                child: state.messages.isEmpty ? _buildSuggestions(context) : _buildMessages(context, state),
-              ),
-              _buildContextRow(context, state),
-              _buildInputRow(context, state),
-            ],
+          final bottomInset = MediaQuery.viewInsetsOf(context).bottom + MediaQuery.paddingOf(context).bottom;
+
+          _scheduleKeyboardScroll(bottomInset);
+
+          return Padding(
+            /// The chat lives inside the player options sheet, which is not a
+            /// [Scaffold] and therefore does not automatically avoid insets.
+            /// Pad the column by the keyboard height so the input row is never
+            /// covered, plus the display padding for layouts which sit above
+            /// the navigation bar without a [SafeArea] above the sheet.
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: Column(
+              children: [
+                Expanded(
+                  child: state.messages.isEmpty ? _buildSuggestions(context) : _buildMessages(context, state),
+                ),
+                _buildContextRow(context, state),
+                _buildInputRow(context, state),
+              ],
+            ),
           );
         });
+  }
+
+  /// Keeps the newest message visible when the keyboard appears or closes;
+  /// the message list shrinks or grows with the inset and the last reply
+  /// would otherwise end up hidden beneath the input row.
+  void _scheduleKeyboardScroll(double bottomInset) {
+    if (bottomInset == _lastBottomInset) {
+      return;
+    }
+
+    _lastBottomInset = bottomInset;
+
+    if (_scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      });
+    }
   }
 
   Widget _buildSuggestions(BuildContext context) {
     final theme = Theme.of(context);
     final l = L.of(context)!;
 
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.auto_awesome,
-            size: 40.0,
-            color: theme.colorScheme.secondary,
-          ),
-          const Padding(padding: EdgeInsets.only(top: 12.0)),
-          Text(
-            l.ask_ai_empty_title,
-            style: theme.textTheme.titleLarge,
-            textAlign: TextAlign.center,
-          ),
-          const Padding(padding: EdgeInsets.only(top: 8.0)),
-          Text(
-            l.ask_ai_empty_subtitle,
-            style: theme.textTheme.titleSmall!.copyWith(color: theme.disabledColor),
-            textAlign: TextAlign.center,
-          ),
-          const Padding(padding: EdgeInsets.only(top: 24.0)),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
-            alignment: WrapAlignment.center,
-            children: [
-              ActionChip(
-                label: Text(l.ask_ai_suggestion_summarize),
-                onPressed: () => _send(l.ask_ai_suggestion_summarize),
+    /// The keyboard shrinks the space available to this view; scroll rather
+    /// than overflow when the suggestions no longer fit, and keep them
+    /// centered when there is room to spare.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 40.0,
+                    color: theme.colorScheme.secondary,
+                  ),
+                  const Padding(padding: EdgeInsets.only(top: 12.0)),
+                  Text(
+                    l.ask_ai_empty_title,
+                    style: theme.textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const Padding(padding: EdgeInsets.only(top: 8.0)),
+                  Text(
+                    l.ask_ai_empty_subtitle,
+                    style: theme.textTheme.titleSmall!.copyWith(color: theme.disabledColor),
+                    textAlign: TextAlign.center,
+                  ),
+                  const Padding(padding: EdgeInsets.only(top: 24.0)),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      ActionChip(
+                        label: Text(l.ask_ai_suggestion_summarize),
+                        onPressed: () => _send(l.ask_ai_suggestion_summarize),
+                      ),
+                      ActionChip(
+                        label: Text(l.ask_ai_suggestion_takeaways),
+                        onPressed: () => _send(l.ask_ai_suggestion_takeaways),
+                      ),
+                      ActionChip(
+                        label: Text(l.ask_ai_suggestion_topics),
+                        onPressed: () => _send(l.ask_ai_suggestion_topics),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              ActionChip(
-                label: Text(l.ask_ai_suggestion_takeaways),
-                onPressed: () => _send(l.ask_ai_suggestion_takeaways),
-              ),
-              ActionChip(
-                label: Text(l.ask_ai_suggestion_topics),
-                onPressed: () => _send(l.ask_ai_suggestion_topics),
-              ),
-            ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
