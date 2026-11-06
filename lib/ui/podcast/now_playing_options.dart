@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:anytime/bloc/podcast/queue_bloc.dart';
 import 'package:anytime/l10n/L.dart';
 import 'package:anytime/state/queue_event_state.dart';
+import 'package:anytime/ui/podcast/ai_chat_view.dart';
 import 'package:anytime/ui/podcast/transcript_view.dart';
 import 'package:anytime/ui/podcast/up_next_view.dart';
 import 'package:anytime/ui/widgets/slider_handle.dart';
@@ -16,7 +17,7 @@ import 'package:provider/provider.dart';
 /// This class gives us options that can be dragged up from the bottom of the main player
 /// window.
 ///
-/// Currently these options are Up Next & Transcript.
+/// Currently these options are Up Next, Transcript & Ask AI.
 ///
 /// This class is an initial version and should by much simpler than it is; however,
 /// a [NestedScrollView] is the widget we need to implement this UI, there is a current
@@ -59,18 +60,19 @@ class NowPlayingOptionsSelector extends StatefulWidget {
   /// tab bar and the gap above the tab content.
   ///
   /// The tab labels are measured with the current [TextScaler] and laid out
-  /// within the width a tab actually has - [tabBarWidth] split between the two
-  /// tabs - so that the collapsed sheet is always tall enough to display its
-  /// content without a bottom overflow, whatever font size the user has
+  /// within the width a tab actually has - [tabBarWidth] split between the
+  /// three tabs - so that the collapsed sheet is always tall enough to display
+  /// its content without a bottom overflow, whatever font size the user has
   /// selected and however many lines the labels need.
   static double collapsedSheetHeight(BuildContext context, {required double tabBarWidth}) {
     final textScaler = MediaQuery.textScalerOf(context);
     final labelStyle = Theme.of(context).textTheme.labelLarge;
-    final labelWidth = math.max(0.0, tabBarWidth / 2 - _tabLabelHorizontalPadding * 2);
+    final labelWidth = math.max(0.0, tabBarWidth / 3 - _tabLabelHorizontalPadding * 2);
 
     final labelHeight = [
       L.of(context)!.up_next_queue_label.toUpperCase(),
       L.of(context)!.transcript_label.toUpperCase(),
+      L.of(context)!.ask_ai_label.toUpperCase(),
     ].map((label) {
       final textPainter = TextPainter(
         text: TextSpan(text: label, style: labelStyle),
@@ -130,7 +132,7 @@ class _NowPlayingOptionsSelectorState extends State<NowPlayingOptionsSelector> {
           animationDuration: !draggableController!.isAttached || draggableController!.size <= minSize
               ? const Duration(seconds: 0)
               : kTabScrollDuration,
-          length: 2,
+          length: 3,
           child: LayoutBuilder(builder: (BuildContext ctx, BoxConstraints constraints) {
             return SingleChildScrollView(
               controller: scrollController,
@@ -246,6 +248,28 @@ class _NowPlayingOptionsSelectorState extends State<NowPlayingOptionsSelector> {
                                                 .copyWith(color: theme.disabledColor),
                                           ),
                                   ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: NowPlayingOptionsSelector._tabLabelVerticalPadding,
+                                      bottom: NowPlayingOptionsSelector._tabLabelVerticalPadding,
+                                    ),
+                                    // The AI chat needs a transcript to ground its answers,
+                                    // so grey out the option when there isn't one.
+                                    child: snapshot.hasData &&
+                                            snapshot.data?.playing != null &&
+                                            snapshot.data!.playing!.hasTranscripts
+                                        ? Text(
+                                            L.of(context)!.ask_ai_label.toUpperCase(),
+                                            style: theme.textTheme.labelLarge,
+                                          )
+                                        : Text(
+                                            L.of(context)!.ask_ai_label.toUpperCase(),
+                                            style: theme
+                                                .textTheme
+                                                .labelLarge!
+                                                .copyWith(color: theme.disabledColor),
+                                          ),
+                                  ),
                                 ],
                               );
                             }),
@@ -256,6 +280,7 @@ class _NowPlayingOptionsSelectorState extends State<NowPlayingOptionsSelector> {
                           children: [
                             UpNextView(),
                             TranscriptView(),
+                            AiChatView(),
                           ],
                         ),
                       ),
@@ -295,7 +320,7 @@ class NowPlayingOptionsScaffold extends StatelessWidget {
 /// This implementation displays the additional options in a tab set outside of a
 /// draggable sheet.
 ///
-/// Currently these options are Up Next & Transcript.
+/// Currently these options are Up Next, Transcript & Ask AI.
 class NowPlayingOptionsSelectorWide extends StatefulWidget {
   final double? scrollPos;
   static const baseSize = 68.0;
@@ -316,7 +341,7 @@ class _NowPlayingOptionsSelectorWideState extends State<NowPlayingOptionsSelecto
     final scrollController = ScrollController();
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: LayoutBuilder(builder: (BuildContext ctx, BoxConstraints constraints) {
         return SingleChildScrollView(
           controller: scrollController,
@@ -369,6 +394,25 @@ class _NowPlayingOptionsSelectorWideState extends State<NowPlayingOptionsSelecto
                                             .copyWith(color: theme.disabledColor),
                                       ),
                               ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16.0, bottom: 16.0),
+                                // The AI chat needs a transcript to ground its answers,
+                                // so grey out the option when there isn't one.
+                                child: snapshot.hasData &&
+                                        snapshot.data?.playing != null &&
+                                        snapshot.data!.playing!.hasTranscripts
+                                    ? Text(
+                                        L.of(context)!.ask_ai_label.toUpperCase(),
+                                        style: theme.textTheme.labelLarge,
+                                      )
+                                    : Text(
+                                        L.of(context)!.ask_ai_label.toUpperCase(),
+                                        style: theme
+                                            .textTheme
+                                            .labelLarge!
+                                            .copyWith(color: theme.disabledColor),
+                                      ),
+                              ),
                             ],
                           );
                         }),
@@ -378,6 +422,7 @@ class _NowPlayingOptionsSelectorWideState extends State<NowPlayingOptionsSelecto
                       children: [
                         UpNextView(),
                         TranscriptView(),
+                        AiChatView(),
                       ],
                     ),
                   ),

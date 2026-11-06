@@ -1187,6 +1187,176 @@ class L {
         );
   }
 
+  String get ask_ai_label {
+    return message('ask_ai_label') ??
+        Intl.message(
+          'Ask AI',
+          name: 'ask_ai_label',
+          desc: 'Label for the AI chat tab',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_empty_title {
+    return message('ask_ai_empty_title') ??
+        Intl.message(
+          'Ask about this episode',
+          name: 'ask_ai_empty_title',
+          desc: 'AI chat empty state title',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_empty_subtitle {
+    return message('ask_ai_empty_subtitle') ??
+        Intl.message(
+          'Answers, summaries and timecodes, powered by the episode transcript.',
+          name: 'ask_ai_empty_subtitle',
+          desc: 'AI chat empty state subtitle',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_suggestion_summarize {
+    return message('ask_ai_suggestion_summarize') ??
+        Intl.message(
+          'Summarize this episode',
+          name: 'ask_ai_suggestion_summarize',
+          desc: 'AI chat suggestion chip',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_suggestion_takeaways {
+    return message('ask_ai_suggestion_takeaways') ??
+        Intl.message(
+          'Key takeaways',
+          name: 'ask_ai_suggestion_takeaways',
+          desc: 'AI chat suggestion chip',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_suggestion_topics {
+    return message('ask_ai_suggestion_topics') ??
+        Intl.message(
+          'What topics are covered?',
+          name: 'ask_ai_suggestion_topics',
+          desc: 'AI chat suggestion chip',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_input_hint {
+    return message('ask_ai_input_hint') ??
+        Intl.message(
+          'Ask about this episode…',
+          name: 'ask_ai_input_hint',
+          desc: 'AI chat input placeholder',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_error_label {
+    return message('ask_ai_error_label') ??
+        Intl.message(
+          'Sorry, something went wrong. Please try again.',
+          name: 'ask_ai_error_label',
+          desc: 'AI chat generic error message',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_context_label {
+    return message('ask_ai_context_label') ??
+        Intl.message(
+          'Using transcript',
+          name: 'ask_ai_context_label',
+          desc: 'Pill showing the chat is grounded in the transcript',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_clear_conversation_label {
+    return message('ask_ai_clear_conversation_label') ??
+        Intl.message(
+          'Clear conversation',
+          name: 'ask_ai_clear_conversation_label',
+          desc: 'Semantic label for the AI chat clear button',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_send_message_label {
+    return message('ask_ai_send_message_label') ??
+        Intl.message(
+          'Send message',
+          name: 'ask_ai_send_message_label',
+          desc: 'Semantic label for the AI chat send button',
+          locale: localeName,
+        );
+  }
+
+  String get settings_ai_chat_divider_label {
+    return message('settings_ai_chat_divider_label') ??
+        Intl.message(
+          'AI Chat',
+          name: 'settings_ai_chat_divider_label',
+          desc: 'Settings section label for the AI chat assistant',
+          locale: localeName,
+        );
+  }
+
+  String get ai_chat_endpoint_label {
+    return message('ai_chat_endpoint_label') ??
+        Intl.message(
+          'OpenAI-compatible API endpoint',
+          name: 'ai_chat_endpoint_label',
+          desc: 'Label for the AI chat endpoint setting',
+          locale: localeName,
+        );
+  }
+
+  String get ai_chat_api_key_label {
+    return message('ai_chat_api_key_label') ??
+        Intl.message(
+          'API key',
+          name: 'ai_chat_api_key_label',
+          desc: 'Label for the AI chat API key setting',
+          locale: localeName,
+        );
+  }
+
+  String get ai_chat_model_label {
+    return message('ai_chat_model_label') ??
+        Intl.message(
+          'Model',
+          name: 'ai_chat_model_label',
+          desc: 'Label for the AI chat model setting',
+          locale: localeName,
+        );
+  }
+
+  String get ai_chat_demo_mode_note {
+    return message('ai_chat_demo_mode_note') ??
+        Intl.message(
+          'No API key set - the assistant runs in demo mode using the episode transcript.',
+          name: 'ai_chat_demo_mode_note',
+          desc: 'Note shown when no AI provider is configured',
+          locale: localeName,
+        );
+  }
+
+  String get ask_ai_stop_label {
+    return message('ask_ai_stop_label') ??
+        Intl.message(
+          'Stop generating',
+          name: 'ask_ai_stop_label',
+          desc: 'Semantic label for the AI chat stop button',
+          locale: localeName,
+        );
+  }
+
   String get semantics_podcast_details_header {
     return message('semantics_podcast_details_header') ??
         Intl.message(

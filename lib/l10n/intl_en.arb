@@ -683,13 +683,13 @@
     "type": "text",
     "placeholders_order": [],
     "placeholders": {}
-   },
-   "search_transcript_label": "Search transcript",
-   "@search_transcript_label": {
-     "description": "Hint text for transcript search box",
-     "type": "text",
-     "placeholders_order": [],
-     "placeholders": {}
+  },
+  "search_transcript_label": "Search transcript",
+  "@search_transcript_label": {
+    "description": "Hint text for transcript search box",
+    "type": "text",
+    "placeholders_order": [],
+    "placeholders": {}
   },
   "auto_scroll_transcript_label": "Follow transcript",
   "@auto_scroll_transcript_label": {
@@ -711,34 +711,34 @@
     "type": "text",
     "placeholders_order": [],
     "placeholders": {}
- },
+  },
   "semantics_podcast_details_header": "Podcast details and episodes page",
   "@semantics_podcast_details_header": {
     "description": "Describes podcast details page",
     "type": "text",
     "placeholders_order": [],
     "placeholders": {}
-   },
-   "semantics_layout_option_list": "List layout",
-   "@semantics_layout_option_list": {
-     "description": "Describes list layout button",
-     "type": "text",
-     "placeholders_order": [],
-     "placeholders": {}
-   },
-   "semantics_layout_option_compact_grid": "Compact grid layout",
-   "@semantics_layout_option_compact_grid": {
-     "description": "Describes compact grid layout button",
-     "type": "text",
-     "placeholders_order": [],
-     "placeholders": {}
-   },
-   "semantics_layout_option_grid": "Grid layout",
-   "@semantics_layout_option_grid": {
-     "description": "Describes grid layout button",
-     "type": "text",
-     "placeholders_order": [],
-     "placeholders": {}
+  },
+  "semantics_layout_option_list": "List layout",
+  "@semantics_layout_option_list": {
+    "description": "Describes list layout button",
+    "type": "text",
+    "placeholders_order": [],
+    "placeholders": {}
+  },
+  "semantics_layout_option_compact_grid": "Compact grid layout",
+  "@semantics_layout_option_compact_grid": {
+    "description": "Describes compact grid layout button",
+    "type": "text",
+    "placeholders_order": [],
+    "placeholders": {}
+  },
+  "semantics_layout_option_grid": "Grid layout",
+  "@semantics_layout_option_grid": {
+    "description": "Describes grid layout button",
+    "type": "text",
+    "placeholders_order": [],
+    "placeholders": {}
   },
   "semantics_mini_player_header": "Mini player. Swipe right to play/pause button. Activate to open main player window",
   "@semantics_mini_player_header": {
@@ -1088,12 +1088,12 @@
     "description": "For current sleep setting",
     "type": "text",
     "placeholders": {}
-   },
-   "scrim_episode_details_selector": "Dismiss episode details",
-   "@scrim_episode_details_selector": {
-     "description": "Replaces default scrim label for episode details bottom sheet.",
-     "type": "text",
-     "placeholders": {}
+  },
+  "scrim_episode_details_selector": "Dismiss episode details",
+  "@scrim_episode_details_selector": {
+    "description": "Replaces default scrim label for episode details bottom sheet.",
+    "type": "text",
+    "placeholders": {}
   },
   "scrim_episode_sort_selector": "Dismiss episode sort",
   "@scrim_episode_sort_selector": {
@@ -1485,5 +1485,107 @@
     "type": "text",
     "placeholders": {}
   },
-  "@@locale": "en"
+  "@@locale": "en",
+  "ask_ai_label": "Ask AI",
+  "@ask_ai_label": {
+    "description": "Label for the AI chat tab",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_empty_title": "Ask about this episode",
+  "@ask_ai_empty_title": {
+    "description": "AI chat empty state title",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_empty_subtitle": "Answers, summaries and timecodes, powered by the episode transcript.",
+  "@ask_ai_empty_subtitle": {
+    "description": "AI chat empty state subtitle",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_suggestion_summarize": "Summarize this episode",
+  "@ask_ai_suggestion_summarize": {
+    "description": "AI chat suggestion chip",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_suggestion_takeaways": "Key takeaways",
+  "@ask_ai_suggestion_takeaways": {
+    "description": "AI chat suggestion chip",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_suggestion_topics": "What topics are covered?",
+  "@ask_ai_suggestion_topics": {
+    "description": "AI chat suggestion chip",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_input_hint": "Ask about this episode…",
+  "@ask_ai_input_hint": {
+    "description": "AI chat input placeholder",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_error_label": "Sorry, something went wrong. Please try again.",
+  "@ask_ai_error_label": {
+    "description": "AI chat generic error message",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_context_label": "Using transcript",
+  "@ask_ai_context_label": {
+    "description": "Pill showing the chat is grounded in the transcript",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_clear_conversation_label": "Clear conversation",
+  "@ask_ai_clear_conversation_label": {
+    "description": "Semantic label for the AI chat clear button",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_send_message_label": "Send message",
+  "@ask_ai_send_message_label": {
+    "description": "Semantic label for the AI chat send button",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_stop_label": "Stop generating",
+  "@ask_ai_stop_label": {
+    "description": "Semantic label for the AI chat stop button",
+    "type": "text",
+    "placeholders": {}
+  },
+  "settings_ai_chat_divider_label": "AI Chat",
+  "@settings_ai_chat_divider_label": {
+    "description": "Settings section label for the AI chat assistant",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_endpoint_label": "OpenAI-compatible API endpoint",
+  "@ai_chat_endpoint_label": {
+    "description": "Label for the AI chat endpoint setting",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_api_key_label": "API key",
+  "@ai_chat_api_key_label": {
+    "description": "Label for the AI chat API key setting",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_model_label": "Model",
+  "@ai_chat_model_label": {
+    "description": "Label for the AI chat model setting",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_demo_mode_note": "No API key set - the assistant runs in demo mode using the episode transcript.",
+  "@ai_chat_demo_mode_note": {
+    "description": "Note shown when no AI provider is configured",
+    "type": "text",
+    "placeholders": {}
+  }
 }
