@@ -68,6 +68,15 @@ class AppSettings {
   /// True if showing a status icon in the notification bar during fetch is enabled
   final bool updatesNotification;
 
+  /// The AI chat endpoint: an OpenAI compatible chat completions base URL.
+  final String aiChatEndpoint;
+
+  /// The AI chat API key. When empty the assistant runs in demo mode.
+  final String aiChatApiKey;
+
+  /// The AI chat model name, e.g. gpt-4o-mini.
+  final String aiChatModel;
+
   AppSettings({
     required this.theme,
     required this.markDeletedEpisodesAsPlayed,
@@ -90,6 +99,9 @@ class AppSettings {
     required this.backgroundUpdate,
     required this.backgroundUpdateMobileData,
     required this.updatesNotification,
+    this.aiChatEndpoint = '',
+    this.aiChatApiKey = '',
+    this.aiChatModel = '',
   });
 
   AppSettings.sensibleDefaults()
@@ -113,7 +125,10 @@ class AppSettings {
         autoPlay = false,
         backgroundUpdate = false,
         backgroundUpdateMobileData = false,
-        updatesNotification = false;
+        updatesNotification = false,
+        aiChatEndpoint = 'https://api.openai.com/v1/chat/completions',
+        aiChatApiKey = '',
+        aiChatModel = 'gpt-6-luna';
 
   AppSettings copyWith({
     String? theme,
@@ -138,6 +153,9 @@ class AppSettings {
     bool? backgroundUpdate,
     bool? backgroundUpdateMobileData,
     bool? updatesNotification,
+    String? aiChatEndpoint,
+    String? aiChatApiKey,
+    String? aiChatModel,
   }) =>
       AppSettings(
         theme: theme ?? this.theme,
@@ -161,5 +179,8 @@ class AppSettings {
         backgroundUpdate: backgroundUpdate ?? this.backgroundUpdate,
         backgroundUpdateMobileData: backgroundUpdateMobileData ?? this.backgroundUpdateMobileData,
         updatesNotification: updatesNotification ?? this.updatesNotification,
+        aiChatEndpoint: aiChatEndpoint ?? this.aiChatEndpoint,
+        aiChatApiKey: aiChatApiKey ?? this.aiChatApiKey,
+        aiChatModel: aiChatModel ?? this.aiChatModel,
       );
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2020 Ben Hills and the project contributors. All rights reserved.
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file. -->
+
+<!-- Exclude secure storage from Android <= 11 backups: the encrypted API key
+     cannot be decrypted after a restore (the Keystore key does not travel
+     with the backup), so backing it up only leaks ciphertext. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+</full-backup-content>

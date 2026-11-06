@@ -4,9 +4,13 @@
 
 import 'dart:math';
 
+import 'dart:async';
+
 import 'package:anytime/core/environment.dart';
 import 'package:anytime/entities/app_settings.dart';
 import 'package:anytime/services/settings/settings_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +19,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 class MobileSettingsService extends SettingsService {
   static late SharedPreferences _sharedPreferences;
   static MobileSettingsService? _instance;
+
+  /// The provider API key is stored in platform secure storage (Android
+  /// Keystore backed) rather than preferences, so it is encrypted at rest and
+  /// its ciphertext is excluded from device backups (see
+  /// android/app/src/main/res/xml/backup_rules.xml). The settings interface
+  /// is synchronous, so the value is read into this cache once at start-up.
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const String _apiKeyStorageKey = 'aiChatApiKey';
+  static String _aiChatApiKeyCache = '';
 
   final settingsNotifier = PublishSubject<String>();
 
@@ -25,9 +38,58 @@ class MobileSettingsService extends SettingsService {
       _instance = MobileSettingsService._create();
 
       _sharedPreferences = await SharedPreferences.getInstance();
+
+      await _initApiKey();
     }
 
     return _instance;
+  }
+
+  /// Allows tests to re-run the start-up sequence (including the API key
+  /// migration) against fresh mock storage.
+  @visibleForTesting
+  static void resetForTest() {
+    _instance = null;
+  }
+
+  /// Reads the API key from secure storage into the in-memory cache and, for
+  /// upgrades from earlier builds, migrates any plaintext copy out of
+  /// preferences. A failure to access secure storage leaves the key empty,
+  /// which simply returns the assistant to demo mode.
+  static Future<void> _initApiKey() async {
+    try {
+      var key = await _secureStorage.read(key: _apiKeyStorageKey) ?? '';
+
+      if (key.isEmpty) {
+        final legacy = _sharedPreferences.getString(_apiKeyStorageKey) ?? '';
+
+        if (legacy.isNotEmpty) {
+          await _secureStorage.write(key: _apiKeyStorageKey, value: legacy);
+          await _sharedPreferences.remove(_apiKeyStorageKey);
+          key = legacy;
+        }
+      }
+
+      _aiChatApiKeyCache = key;
+    } catch (_) {
+      _aiChatApiKeyCache = '';
+    }
+  }
+
+  static Future<void> _writeApiKey(String value) async {
+    try {
+      if (value.isEmpty) {
+        await _secureStorage.delete(key: _apiKeyStorageKey);
+      } else {
+        await _secureStorage.write(key: _apiKeyStorageKey, value: value);
+      }
+
+      /// Remove any plaintext copy left by earlier builds.
+      await _sharedPreferences.remove(_apiKeyStorageKey);
+    } catch (_) {
+      /// Nothing sensible can be done if secure storage is unavailable; the
+      /// in-memory value still works for this session.
+    }
   }
 
   @override
@@ -252,6 +314,44 @@ class MobileSettingsService extends SettingsService {
   @override
   bool get updateNotification {
     return _sharedPreferences.getBool('updateNotification') ?? false;
+  }
+
+  @override
+  String get aiChatEndpoint {
+    return _sharedPreferences.getString('aiChatEndpoint') ?? 'https://api.openai.com/v1/chat/completions';
+  }
+
+  @override
+  set aiChatEndpoint(String endpoint) {
+    _sharedPreferences.setString('aiChatEndpoint', endpoint);
+    settingsNotifier.sink.add('aiChatEndpoint');
+  }
+
+  @override
+  String get aiChatApiKey {
+    return _aiChatApiKeyCache;
+  }
+
+  @override
+  set aiChatApiKey(String apiKey) {
+    _aiChatApiKeyCache = apiKey;
+
+    unawaited(_writeApiKey(apiKey));
+
+    settingsNotifier.sink.add('aiChatApiKey');
+  }
+
+  @override
+  String get aiChatModel {
+    final value = _sharedPreferences.getString('aiChatModel') ?? 'gpt-6-luna';
+
+    return value.isEmpty ? 'gpt-6-luna' : value;
+  }
+
+  @override
+  set aiChatModel(String model) {
+    _sharedPreferences.setString('aiChatModel', model);
+    settingsNotifier.sink.add('aiChatModel');
   }
 
   @override
