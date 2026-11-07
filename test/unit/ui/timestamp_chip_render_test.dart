@@ -89,12 +89,9 @@ void main() {
       return image.toByteData(format: ui.ImageByteFormat.png);
     });
 
-    final out = Directory('demo/screenshots');
-    if (!out.existsSync()) {
-      out.createSync(recursive: true);
-    }
-
-    File('demo/screenshots/10-range-chips-tap.png').writeAsBytesSync(bytes!.buffer.asUint8List());
+    const screenshotPath = 'demo/screenshots/10-range-chips-tap.png';
+    Directory('demo/screenshots').createSync(recursive: true);
+    File(screenshotPath).writeAsBytesSync(bytes!.buffer.asUint8List());
 
     // ...and tapping the first range chip seeks to the start of the range.
     await tester.tap(find.byType(TimestampChip).first);
