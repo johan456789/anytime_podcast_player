@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exclude secure storage from Android 12+ cloud and device-to-device
+     transfers: the encrypted API key cannot be decrypted after a restore
+     (the Keystore key does not travel with the backup), so backing it up
+     only leaks ciphertext. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    </device-transfer>
+</data-extraction-rules>

@@ -89,6 +89,18 @@ abstract class SettingsService {
 
   bool get updateNotification;
 
+  String get aiChatEndpoint;
+
+  set aiChatEndpoint(String endpoint);
+
+  String get aiChatApiKey;
+
+  set aiChatApiKey(String apiKey);
+
+  String get aiChatModel;
+
+  set aiChatModel(String model);
+
   Stream<String> get settingsListener;
 
   set lastFeedRefresh(DateTime lastFeedRefresh);

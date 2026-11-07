@@ -36,6 +36,9 @@ class SettingsBloc extends Bloc {
   final BehaviorSubject<bool> _backgroundUpdate = BehaviorSubject<bool>();
   final BehaviorSubject<bool> _backgroundUpdateMobileData = BehaviorSubject<bool>();
   final BehaviorSubject<bool> _updateNotification = BehaviorSubject<bool>();
+  final BehaviorSubject<String> _aiChatEndpoint = BehaviorSubject<String>();
+  final BehaviorSubject<String> _aiChatApiKey = BehaviorSubject<String>();
+  final BehaviorSubject<String> _aiChatModel = BehaviorSubject<String>();
 
   var _currentSettings = AppSettings.sensibleDefaults();
 
@@ -77,6 +80,9 @@ class SettingsBloc extends Bloc {
       backgroundUpdate: settingsService.backgroundUpdate,
       backgroundUpdateMobileData: settingsService.backgroundUpdateMobileData,
       updatesNotification: settingsService.updateNotification,
+      aiChatEndpoint: settingsService.aiChatEndpoint,
+      aiChatApiKey: settingsService.aiChatApiKey,
+      aiChatModel: settingsService.aiChatModel,
     );
 
     _settings.add(_currentSettings);
@@ -203,6 +209,27 @@ class SettingsBloc extends Bloc {
       settingsService.backgroundUpdateMobileData = backgroundUpdatesMobileData;
     });
 
+    /// Write through to the service first and then read back the effective
+    /// value: clearing a field restores that setting's default (e.g. the
+    /// OpenAI endpoint or the default model) rather than persisting empty.
+    _aiChatEndpoint.listen((endpoint) {
+      settingsService.aiChatEndpoint = endpoint;
+      _currentSettings = _currentSettings.copyWith(aiChatEndpoint: settingsService.aiChatEndpoint);
+      _settings.add(_currentSettings);
+    });
+
+    _aiChatApiKey.listen((apiKey) {
+      settingsService.aiChatApiKey = apiKey;
+      _currentSettings = _currentSettings.copyWith(aiChatApiKey: settingsService.aiChatApiKey);
+      _settings.add(_currentSettings);
+    });
+
+    _aiChatModel.listen((model) {
+      settingsService.aiChatModel = model;
+      _currentSettings = _currentSettings.copyWith(aiChatModel: settingsService.aiChatModel);
+      _settings.add(_currentSettings);
+    });
+
     _updateNotification.listen((updateNotification) {
       _currentSettings = _currentSettings.copyWith(updatesNotification: updateNotification);
       _settings.add(_currentSettings);
@@ -266,6 +293,12 @@ class SettingsBloc extends Bloc {
 
   void Function(bool) get updateNotification => _updateNotification.add;
 
+  void Function(String) get setAiChatEndpoint => _aiChatEndpoint.add;
+
+  void Function(String) get setAiChatApiKey => _aiChatApiKey.add;
+
+  void Function(String) get setAiChatModel => _aiChatModel.add;
+
   AppSettings get currentSettings => _settings.value;
 
   @override
@@ -288,6 +321,9 @@ class SettingsBloc extends Bloc {
     _layoutCount.close();
     _backgroundUpdate.close();
     _updateNotification.close();
+    _aiChatEndpoint.close();
+    _aiChatApiKey.close();
+    _aiChatModel.close();
     _settings.close();
   }
 }

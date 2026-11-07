@@ -8,6 +8,15 @@ import 'package:rxdart/rxdart.dart';
 
 class MockSettingsService extends SettingsService {
   @override
+  String aiChatEndpoint = 'https://api.openai.com/v1/chat/completions';
+
+  @override
+  String aiChatApiKey = '';
+
+  @override
+  String aiChatModel = 'gpt-6-luna';
+
+  @override
   bool autoOpenNowPlaying = false;
 
   @override

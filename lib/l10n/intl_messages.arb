@@ -1,5 +1,5 @@
 {
-  "@@last_modified": "2025-11-04T08:37:41.903832",
+  "@@last_modified": "2026-11-05T04:43:50.343888",
   "app_title": "Anytime Podcast Player",
   "@app_title": {
     "description": "Full title for the application",
@@ -687,6 +687,108 @@
   "transcript_why_not_url": "https://anytimeplayer.app/docs/anytime_transcript_support_en.html",
   "@transcript_why_not_url": {
     "description": "Language specific link",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_label": "Ask AI",
+  "@ask_ai_label": {
+    "description": "Label for the AI chat tab",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_empty_title": "Ask about this episode",
+  "@ask_ai_empty_title": {
+    "description": "AI chat empty state title",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_empty_subtitle": "Answers, summaries and timecodes, powered by the episode transcript.",
+  "@ask_ai_empty_subtitle": {
+    "description": "AI chat empty state subtitle",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_suggestion_summarize": "Summarize this episode",
+  "@ask_ai_suggestion_summarize": {
+    "description": "AI chat suggestion chip",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_suggestion_takeaways": "Key takeaways",
+  "@ask_ai_suggestion_takeaways": {
+    "description": "AI chat suggestion chip",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_suggestion_topics": "What topics are covered?",
+  "@ask_ai_suggestion_topics": {
+    "description": "AI chat suggestion chip",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_input_hint": "Ask about this episode…",
+  "@ask_ai_input_hint": {
+    "description": "AI chat input placeholder",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_error_label": "Sorry, something went wrong. Please try again.",
+  "@ask_ai_error_label": {
+    "description": "AI chat generic error message",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_context_label": "Using transcript",
+  "@ask_ai_context_label": {
+    "description": "Pill showing the chat is grounded in the transcript",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_clear_conversation_label": "Clear conversation",
+  "@ask_ai_clear_conversation_label": {
+    "description": "Semantic label for the AI chat clear button",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_send_message_label": "Send message",
+  "@ask_ai_send_message_label": {
+    "description": "Semantic label for the AI chat send button",
+    "type": "text",
+    "placeholders": {}
+  },
+  "settings_ai_chat_divider_label": "AI Chat",
+  "@settings_ai_chat_divider_label": {
+    "description": "Settings section label for the AI chat assistant",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_endpoint_label": "OpenAI-compatible API endpoint",
+  "@ai_chat_endpoint_label": {
+    "description": "Label for the AI chat endpoint setting",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_api_key_label": "API key",
+  "@ai_chat_api_key_label": {
+    "description": "Label for the AI chat API key setting",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_model_label": "Model",
+  "@ai_chat_model_label": {
+    "description": "Label for the AI chat model setting",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ai_chat_demo_mode_note": "No API key set - the assistant runs in demo mode using the episode transcript.",
+  "@ai_chat_demo_mode_note": {
+    "description": "Note shown when no AI provider is configured",
+    "type": "text",
+    "placeholders": {}
+  },
+  "ask_ai_stop_label": "Stop generating",
+  "@ask_ai_stop_label": {
+    "description": "Semantic label for the AI chat stop button",
     "type": "text",
     "placeholders": {}
   },
