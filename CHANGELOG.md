@@ -1,3 +1,8 @@
+## 1.4.3
+
+- Add Ask AI tab for the playing episode with markdown replies and tappable timecodes.
+- Add OpenAI compatible provider settings for AI chat.
+
 ## 1.4.2
 
 - Add support for ID3 text chapters.
