@@ -1,7 +1,3 @@
-// Copyright 2020 Ben Hills and the project contributors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 /// A segment of text which either contains plain text or a playback timestamp
 /// reference in the form `[mm:ss]`, `[hh:mm:ss]` or a range
 /// `[mm:ss–mm:ss]` (with a hyphen, en dash or em dash).
