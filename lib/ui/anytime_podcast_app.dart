@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:anytime/api/podcast/mobile_podcast_api.dart';
 import 'package:anytime/api/podcast/podcast_api.dart';
+import 'package:anytime/bloc/ai/ai_chat_bloc.dart';
 import 'package:anytime/bloc/discovery/discovery_bloc.dart';
 import 'package:anytime/bloc/podcast/audio_bloc.dart';
 import 'package:anytime/bloc/podcast/episode_bloc.dart';
@@ -24,6 +25,7 @@ import 'package:anytime/repository/repository.dart';
 import 'package:anytime/repository/sembast/sembast_repository.dart';
 import 'package:anytime/services/audio/audio_player_service.dart';
 import 'package:anytime/services/audio/default_audio_player_service.dart';
+import 'package:anytime/services/ai/settings_ai_chat_service.dart';
 import 'package:anytime/services/download/download_service.dart';
 import 'package:anytime/services/download/mobile_download_manager.dart';
 import 'package:anytime/services/download/mobile_download_service.dart';
@@ -207,6 +209,13 @@ class AnytimePodcastAppState extends State<AnytimePodcastApp> {
           create: (_) => QueueBloc(
             audioPlayerService: widget.audioPlayerService,
             podcastService: widget.podcastService!,
+          ),
+          dispose: (_, value) => value.dispose(),
+        ),
+        Provider<AiChatBloc>(
+          create: (_) => AiChatBloc(
+            aiChatService: SettingsAiChatService(widget.mobileSettingsService),
+            playbackSource: AudioPlayerChatSource(widget.audioPlayerService),
           ),
           dispose: (_, value) => value.dispose(),
         )

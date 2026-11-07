@@ -67,7 +67,18 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
 
+    def debugKeystoreFile = rootProject.file('debug.keystore')
+
     signingConfigs {
+        if (debugKeystoreFile.exists()) {
+            debug {
+                storeFile debugKeystoreFile
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+
         release {
             keyAlias keystoreProperties['keyAlias']
             keyPassword keystoreProperties['keyPassword']

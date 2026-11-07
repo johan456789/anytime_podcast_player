@@ -11,6 +11,7 @@ import 'package:anytime/l10n/L.dart';
 import 'package:anytime/state/opml_state.dart';
 import 'package:anytime/ui/library/opml_export.dart';
 import 'package:anytime/ui/library/opml_import.dart';
+import 'package:anytime/ui/settings/ai_chat.dart';
 import 'package:anytime/ui/settings/episode_refresh.dart';
 import 'package:anytime/ui/settings/search_provider.dart';
 import 'package:anytime/ui/settings/settings_section_label.dart';
@@ -211,6 +212,8 @@ class _SettingsState extends State<Settings> {
                 },
               ),
               const SearchProviderWidget(),
+              SettingsDividerLabel(label: L.of(context)!.settings_ai_chat_divider_label),
+              AiChatSettingsWidget(),
             ],
           );
         });
