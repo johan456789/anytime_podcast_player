@@ -18,7 +18,7 @@ jobs:
     with:
       platforms: '["android"]'
       flutter_version: '3.41.5' # pinned in pubspec.yaml; keep in sync
-      analyze_args: --no-fatal-warnings # the repo carries a pre-existing issue baseline
+      analyze_args: --no-fatal-infos --no-fatal-warnings # the repo carries a pre-existing issue baseline (6 warnings, 86 infos)
     secrets:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
