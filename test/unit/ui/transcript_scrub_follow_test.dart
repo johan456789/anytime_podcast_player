@@ -164,7 +164,7 @@ void main() {
     layout = TranscriptRowLayout.compute(subtitles: captions, spec: spec, width: tester.getSize(transcriptList()).width);
 
     const steps = 100;
-    final lengthMs = fixtureLength.inMilliseconds;
+    final lengthSeconds = fixtureLength.inSeconds;
 
     final width = tester.getSize(find.byType(MiniPlayerProgressBar)).width;
     final downPoint = tester.getCenter(find.byKey(const Key('miniplayer-playhead')));
@@ -179,7 +179,7 @@ void main() {
       currentFraction = fraction;
       await tester.pump();
 
-      final dragged = Duration(milliseconds: (fraction * lengthMs).round());
+      final dragged = Duration(seconds: (fraction * lengthSeconds).round());
       final expectedIndex = indexForPosition(captions, dragged);
 
       // The highlighted row is the caption containing the dragged time...
@@ -246,7 +246,7 @@ void main() {
 
     // 63% of 17:12 is 10:50:160ms; the seek is applied at whole seconds
     // (10:50) and confirms the scrubbed position.
-    const pending = Duration(milliseconds: 650160);
+    const pending = Duration(seconds: 650);
 
     // Stale pre-seek positions must be ignored while the seek is pending.
     audioPlayerService.emitPosition(const Duration(seconds: 516));
@@ -312,6 +312,63 @@ void main() {
 
     expect(scrollPosition(tester).pixels, offsetAfterRelease);
     expect(highlightedRowIndex(tester), indexAfterRelease);
+  });
+
+  testWidgets('a caption starting mid-second does not move the highlight on release', (tester) async {
+    // Real VTT/SRT captions start at fractional seconds. The scrubbed
+    // position is whole seconds end to end (bubble, scrub event, pending
+    // seek and the seek itself), so the confirmed position is the exact
+    // scrubbed value and the release can never shift the highlight back
+    // into the previous caption - the regression the millisecond contract
+    // had.
+    final custom = <Subtitle>[
+      Subtitle(
+          index: 0,
+          start: const Duration(seconds: 0),
+          end: const Duration(milliseconds: 10400),
+          data: 'caption A'),
+      Subtitle(
+          index: 1,
+          start: const Duration(milliseconds: 10400),
+          end: const Duration(milliseconds: 25000),
+          data: 'caption B'),
+      Subtitle(
+          index: 2,
+          start: const Duration(milliseconds: 25000),
+          end: const Duration(milliseconds: 40000),
+          data: 'caption C'),
+    ];
+
+    await pumpTranscript(tester);
+
+    final spec = TranscriptRowSpec.of(tester.element(transcriptList()));
+    layout = TranscriptRowLayout.compute(subtitles: custom, spec: spec, width: tester.getSize(transcriptList()).width);
+
+    audioPlayerService.emitTranscript(Transcript(subtitles: custom));
+    await tester.pump();
+
+    // 10.7s is inside caption B (10.4s .. 25s); its whole-second scrub is
+    // 11s, which is inside the same caption.
+    const scrubbed = Duration(seconds: 11);
+    final fraction = 11 / fixtureLength.inSeconds;
+
+    final gesture = await scrubGesture(tester, fraction);
+    await tester.pump();
+
+    final highlighted = find.byWidgetPredicate((w) => w is SubtitleWidget && w.highlight);
+    final offsetAtDrag = scrollPosition(tester).pixels;
+
+    expect(tester.widget<SubtitleWidget>(highlighted).subtitle, same(custom[1]));
+
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // The seek confirmed at the scrubbed whole second, inside the same
+    // caption: nothing moved.
+    expect(audioPlayerService.positionSubject.valueOrNull!.position, scrubbed);
+    expect(tester.widget<SubtitleWidget>(highlighted).subtitle, same(custom[1]));
+    expect(scrollPosition(tester).pixels, offsetAtDrag);
   });
 
   testWidgets('a seek that never confirms resumes normal follow after the timeout', (tester) async {

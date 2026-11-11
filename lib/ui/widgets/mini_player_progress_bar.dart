@@ -2,8 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
+
 import 'package:anytime/bloc/podcast/audio_bloc.dart';
 import 'package:anytime/services/audio/audio_player_service.dart';
+import 'package:anytime/ui/podcast/transcript_row_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -61,12 +64,32 @@ class _MiniPlayerProgressBarState extends State<MiniPlayerProgressBar> {
 
   /// The most recent seek, held until the position stream catches up so the
   /// bar does not snap back to the pre-seek position in the gap between
-  /// ending the drag and the next position event.
+  /// ending the drag and the next position event. A safety timeout clears it
+  /// if the seek never confirms (failed seek, episode switch), matching the
+  /// transcript's handshake.
   Duration? _pendingSeek;
+  Timer? _pendingSeekTimer;
 
   /// Width of the progress strip, updated on every layout pass and used to
   /// convert drag positions into fractions.
   double _stripWidth = 0.0;
+
+  @override
+  void dispose() {
+    _pendingSeekTimer?.cancel();
+
+    // If the bar leaves the tree mid-drag (the episode ends, the player
+    // stops), no drag-end or cancel ever fires, so the scrub must be
+    // cleared here: a non-null scrub value left on the bloc would keep the
+    // transcript in scrubbing mode forever, and the stream replays the
+    // stale value to every new listener.
+    if (_dragPosition != null) {
+      _dragPosition = null;
+      Provider.of<AudioBloc>(context, listen: false).transitionScrubPosition(null);
+    }
+
+    super.dispose();
+  }
 
   bool _canSeek(AudioBloc audioBloc) {
     final length = audioBloc.playPosition?.valueOrNull?.length ?? Duration.zero;
@@ -74,12 +97,34 @@ class _MiniPlayerProgressBarState extends State<MiniPlayerProgressBar> {
     return length > Duration.zero;
   }
 
-  /// Converts a drag x-coordinate into the absolute, millisecond-rounded
-  /// position it represents on a strip of [width] within [length].
+  /// Converts a drag x-coordinate into the absolute position it represents
+  /// on a strip of [width] within [length], rounded to whole seconds.
+  ///
+  /// Whole seconds are the contract end to end: the bubble displays
+  /// seconds, the transcript's pending seek waits for the scrubbed value,
+  /// and the audio service seeks whole seconds - using one value for all
+  /// of them is what guarantees a motionless release. Millisecond
+  /// precision here would let the confirmed position fall into an earlier
+  /// caption whenever a caption starts between the whole second and the
+  /// dragged millisecond.
   Duration _scrubbedPosition(double dx, double width, Duration length) {
     final fraction = (dx / width).clamp(0.0, 1.0);
 
-    return Duration(milliseconds: (fraction * length.inMilliseconds).round());
+    return Duration(seconds: (fraction * length.inSeconds).round());
+  }
+
+  /// Holds [position] as the pending seek with the confirmation timeout
+  /// armed, so an unconfirmed seek cannot freeze the bar forever.
+  void _holdPendingSeek(Duration position) {
+    _pendingSeek = position;
+    _pendingSeekTimer?.cancel();
+    _pendingSeekTimer = Timer(pendingSeekTimeout, () {
+      if (mounted) {
+        setState(() {
+          _pendingSeek = null;
+        });
+      }
+    });
   }
 
   void _onDragStart(DragStartDetails details) {
@@ -128,15 +173,19 @@ class _MiniPlayerProgressBarState extends State<MiniPlayerProgressBar> {
 
     setState(() {
       _dragPosition = null;
-      _pendingSeek = position;
     });
 
+    // The scrub is cleared unconditionally: if the length vanished mid-drag
+    // (episode switch, stop), skipping this would leave the transcript
+    // stuck in scrubbing mode.
+    audioBloc.transitionScrubPosition(null);
+
     if (_canSeek(audioBloc)) {
-      // The seek is applied before the scrub is cleared: the transcript
+      // The seek is applied after the scrub is cleared: the transcript
       // treats the last scrub value as the pending seek it waits for
       // playback to confirm.
       audioBloc.transitionPosition(position.inSeconds.toDouble());
-      audioBloc.transitionScrubPosition(null);
+      _holdPendingSeek(position);
     }
   }
 
@@ -158,11 +207,11 @@ class _MiniPlayerProgressBarState extends State<MiniPlayerProgressBar> {
       return;
     }
 
-    final targetMs = (state.position + delta).inMilliseconds.clamp(0, state.length.inMilliseconds);
-    final target = Duration(milliseconds: targetMs);
+    final targetSeconds = (state.position + delta).inMilliseconds.clamp(0, state.length.inMilliseconds) ~/ 1000;
+    final target = Duration(seconds: targetSeconds);
 
     setState(() {
-      _pendingSeek = target;
+      _holdPendingSeek(target);
     });
 
     audioBloc.transitionPosition(target.inSeconds.toDouble());
@@ -212,6 +261,7 @@ class _MiniPlayerProgressBarState extends State<MiniPlayerProgressBar> {
             position = _dragPosition!;
           } else if (_pendingSeek != null) {
             if ((position.inMilliseconds - _pendingSeek!.inMilliseconds).abs() < 1000) {
+              _pendingSeekTimer?.cancel();
               _pendingSeek = null;
             } else {
               position = _pendingSeek!;
