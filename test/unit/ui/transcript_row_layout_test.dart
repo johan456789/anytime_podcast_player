@@ -2,10 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:anytime/bloc/podcast/audio_bloc.dart';
 import 'package:anytime/entities/transcript.dart';
+import 'package:anytime/services/audio/audio_player_service.dart';
+import 'package:anytime/ui/themes.dart';
 import 'package:anytime/ui/podcast/transcript_row_layout.dart';
+import 'package:anytime/ui/podcast/transcript_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+import 'mini_player_test_harness.dart';
 
 /// Tests for the transcript's pure logic and its exact row geometry: the
 /// highlight index search, the speaker back-scan, and - critically - that
@@ -127,6 +134,146 @@ void main() {
     });
   });
 
+  group('row geometry matches the render', () {
+    /// Captions chosen to exercise every row-shape input: a short line, a
+    /// long line wrapping to several lines, inline markup, an explicit
+    /// speaker in the header, and an empty body.
+    final captions = <Subtitle>[
+      Subtitle(index: 0, start: const Duration(seconds: 0), data: 'Short line.'),
+      Subtitle(
+        index: 1,
+        start: const Duration(seconds: 15),
+        data: 'A much longer caption that will comfortably wrap onto four or more '
+            'rendered lines at the narrowest width we test, because it just '
+            'keeps going and going with plenty of ordinary words to lay out.',
+      ),
+      Subtitle(
+        index: 2,
+        start: const Duration(seconds: 30),
+        data: 'A caption with <b>bold</b>, <i>italic</i> and <u>underline</u> '
+            'markup spread across enough text to need more than one line.',
+      ),
+      Subtitle(
+        index: 3,
+        start: const Duration(seconds: 45),
+        speaker: 'HAN',
+        data: 'A caption with an explicit speaker in the header.',
+      ),
+      Subtitle(index: 4, start: const Duration(seconds: 60), data: ''),
+    ];
+
+    testWidgets('each rendered row height equals the measured extent within 0.5px', (tester) async {
+      final audioPlayerService = _UnusedAudioPlayerService();
+      final audioBloc = AudioBloc(audioPlayerService: audioPlayerService);
+
+      addTearDown(() {
+        audioBloc.dispose();
+      });
+
+      TranscriptRowSpec? spec;
+
+      for (final theme in [Themes.lightTheme().themeData, Themes.darkTheme().themeData]) {
+        for (final width in [320.0, 411.0, 800.0]) {
+          for (final scale in [1.0, 1.3, 2.0]) {
+            for (final caption in captions) {
+              await tester.pumpWidget(
+                Provider<AudioBloc>.value(
+                  value: audioBloc,
+                  child: MaterialApp(
+                    theme: theme,
+                    home: MediaQuery(
+                      data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+                      child: Scaffold(
+                        body: SingleChildScrollView(
+                          child: SizedBox(
+                            width: width,
+                            child: Builder(
+                              builder: (innerContext) {
+                                spec = TranscriptRowSpec.of(innerContext);
+
+                                return SubtitleWidget(
+                                  key: const Key('row'),
+                                  spec: spec!,
+                                  subtitle: caption,
+                                  highlight: true,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+              await tester.pump();
+
+              // One layout over all captions; the row under test is index 0
+              // of the single-caption list, but build the layout over every
+              // caption to exercise the same prefix-sum code the list uses.
+              final layout = TranscriptRowLayout.compute(
+                subtitles: captions,
+                spec: spec!,
+                width: width,
+              );
+
+              final renderedHeight = tester.getSize(find.byKey(const Key('row'))).height;
+              final measuredHeight = layout.extentOf(captions.indexOf(caption));
+
+              expect(
+                (renderedHeight - measuredHeight).abs(),
+                lessThan(0.5),
+                reason: 'caption ${caption.index} at width $width scale $scale '
+                    '(${theme.brightness}): rendered $renderedHeight vs measured $measuredHeight',
+              );
+            }
+          }
+        }
+      }
+    });
+  });
+
+  group('list scroll extent', () {
+    testWidgets('maxScrollExtent equals totalExtent minus the viewport dimension', (tester) async {
+      late AudioBloc audioBloc;
+      late MiniPlayerTestAudioPlayerService audioPlayerService;
+
+      audioPlayerService = MiniPlayerTestAudioPlayerService();
+      audioBloc = AudioBloc(audioPlayerService: audioPlayerService);
+
+      addTearDown(() {
+        audioBloc.dispose();
+        audioPlayerService.disposeService();
+      });
+
+      await pumpScene(tester, audioBloc: audioBloc, theme: Themes.lightTheme().themeData, sceneBuilder: (context) {
+        return nowPlayingScene(context);
+      }, onMounted: () {
+        audioPlayerService.emitPlayback(episode: fixtureEpisode());
+      });
+
+      final listFinder = find.byWidgetPredicate((w) => w is CustomScrollView && w.controller != null);
+
+      expect(listFinder, findsOneWidget);
+
+      final listSize = tester.getSize(listFinder);
+      final spec = TranscriptRowSpec.of(tester.element(listFinder));
+      final layout = TranscriptRowLayout.compute(
+        subtitles: fixtureTranscript().subtitles,
+        spec: spec,
+        width: listSize.width,
+      );
+
+      final position = tester
+          .state<ScrollableState>(
+              find.descendant(of: listFinder, matching: find.byType(Scrollable)).first)
+          .position;
+      final expected = (layout.totalExtent - position.viewportDimension).clamp(0.0, double.infinity);
+
+      expect(position.maxScrollExtent, closeTo(expected, 0.5));
+    });
+  });
+
   group('long transcript measurement', () {
     /// A ~3h, 5000 caption transcript with realistic, varied captions: 1-4
     /// rendered lines, some with speakers and inline markup.
@@ -223,6 +370,78 @@ void main() {
       expect(layout.totalExtent, greaterThan(0.0));
     });
 
+    testWidgets('5000 caption transcript scrubs across the full range', (tester) async {
+      late AudioBloc audioBloc;
+      late MiniPlayerTestAudioPlayerService audioPlayerService;
 
+      audioPlayerService = MiniPlayerTestAudioPlayerService();
+      audioBloc = AudioBloc(audioPlayerService: audioPlayerService);
+
+      addTearDown(() {
+        audioBloc.dispose();
+        audioPlayerService.disposeService();
+      });
+
+      await pumpScene(tester, audioBloc: audioBloc, theme: Themes.lightTheme().themeData, sceneBuilder: (context) {
+        return nowPlayingScene(context);
+      }, onMounted: () {
+        // The episode must be as long as the transcript so the full sweep
+        // reaches the last caption.
+        audioPlayerService.emitPlayback(
+          episode: fixtureEpisode(),
+          length: const Duration(seconds: 10000),
+        );
+        audioPlayerService.emitTranscript(longTranscript());
+      });
+
+      // Let the incremental measurement job run to completion.
+      final listFinder = find.byWidgetPredicate((w) => w is CustomScrollView && w.controller != null);
+      final position = tester
+          .state<ScrollableState>(
+              find.descendant(of: listFinder, matching: find.byType(Scrollable)).first)
+          .position;
+
+      final spec = TranscriptRowSpec.of(tester.element(listFinder));
+      final expectedLayout = TranscriptRowLayout.compute(
+        subtitles: longTranscript().subtitles,
+        spec: spec,
+        width: tester.getSize(listFinder).width,
+      );
+      final exactMax = (expectedLayout.totalExtent - position.viewportDimension).clamp(0.0, double.infinity);
+
+      // Drive the incremental measurement job to completion: each pump runs
+      // a few idle-task chunks, and the exact maxScrollExtent only appears
+      // once the final chunk's setState has laid the list out.
+      var pumps = 0;
+
+      while ((position.maxScrollExtent - exactMax).abs() > 0.5 && pumps < 200) {
+        await tester.pump(const Duration(milliseconds: 16));
+        pumps++;
+      }
+
+      // With measurement complete, the maxScrollExtent is exact and the list
+      // can be driven across its whole range.
+      expect(position.maxScrollExtent, closeTo(exactMax, 0.5));
+
+      final barSize = tester.getSize(find.byType(MiniPlayerProgressBar));
+
+      final gesture = await tester.startGesture(tester.getCenter(find.byKey(const Key('miniplayer-playhead'))));
+      await gesture.moveBy(Offset(barSize.width * 0.5, 0));
+      await tester.pump();
+      await gesture.moveBy(Offset(barSize.width * 0.5, 0));
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+
+      // The seek applied at 100%: the offset is the exact maxScrollExtent.
+      expect(position.pixels, closeTo(position.maxScrollExtent, 0.5));
+    });
   });
+}
+
+/// Placeholder audio service for row-level tests that never trigger any
+/// transport call; noSuchMethod satisfies the abstract members.
+class _UnusedAudioPlayerService extends AudioPlayerService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
