@@ -1,3 +1,14 @@
+## Unreleased
+
+- Add a draggable playhead with a timecode bubble to both mini players.
+- The transcript now highlights the caption at the dragged timecode and
+  follows the drag live, centred in the viewport with natural clamps at the
+  start and end of the transcript.
+- Releasing the playhead applies the seek without any extra movement; normal
+  playback keeps the gentle animated transcript follow.
+- Long transcripts measure their row layout incrementally so opening a very
+  long episode does not stall the UI.
+
 ## 1.4.3
 
 - Add Ask AI tab for the playing episode with markdown replies and tappable timecodes.
