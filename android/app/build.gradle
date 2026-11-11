@@ -94,7 +94,10 @@ android {
         }
 
         release {
-            signingConfig signingConfigs.release
+            // Sign with the release key when key.properties is present (local
+            // builds); CI builds debug-signed, and the release job on v* tags
+            // re-signs the artifact with the real key via apksigner.
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android.txt')
         }
