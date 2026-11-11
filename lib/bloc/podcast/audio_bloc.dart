@@ -47,6 +47,20 @@ class AudioBloc extends Bloc {
   /// Sink to update our position
   final PublishSubject<double> _transitionPosition = PublishSubject<double>();
 
+  /// Reports the position the user is scrubbing to on the mini player (or null
+  /// when no scrub is in progress), so views such as the transcript can follow
+  /// the drag live before the seek is applied.
+  ///
+  /// Delivered synchronously: events are only sent from gesture handlers
+  /// (never during build), so listeners such as the transcript's scroll logic
+  /// run within the same call and land in the same frame as the progress
+  /// bar's own update.
+  ///
+  /// This is a hand-rolled [ValueStream] rather than a seeded rxdart
+  /// [BehaviorSubject] because rxdart wraps every subscription of a seeded
+  /// subject in an async delivery transformer, which defeats `sync: true`.
+  final _ScrubPositionStream _scrubPosition = _ScrubPositionStream();
+
   /// Handles persisting data to storage.
   final AudioPlayerService audioPlayerService;
 
@@ -229,6 +243,21 @@ class AudioBloc extends Bloc {
   /// Get position and percentage played of playing episode
   ValueStream<PositionState>? get playPosition => audioPlayerService.playPosition;
 
+  /// The position the user is currently scrubbing to on the mini player, or
+  /// null when no scrub is in progress.
+  ValueStream<Duration?> get scrubPosition => _scrubPosition;
+
+  /// Report (or clear, with null) the position the user is scrubbing to.
+  /// Equal consecutive values are dropped so a stationary drag does not
+  /// re-trigger transcript work.
+  void transitionScrubPosition(Duration? p) {
+    if (p == _scrubPosition.valueOrNull) {
+      return;
+    }
+
+    _scrubPosition.add(p);
+  }
+
   Stream<Sleep>? get sleepStream => audioPlayerService.sleepStream;
 
   /// Change playback speed
@@ -255,7 +284,102 @@ class AudioBloc extends Bloc {
     _volumeBoost.close();
     _playNextUnplayedEpisode.close();
     _playLatestEpisode.close();
+    _scrubPosition.close();
 
     super.dispose();
+  }
+}
+
+/// A single-value [ValueStream] over `Duration?` with synchronous delivery.
+///
+/// Subscribers receive events within the same call that produces them, a new
+/// subscriber immediately receives the current value (null until the first
+/// event, and null again when a scrub ends), and [valueOrNull] exposes the
+/// latest value at any time. Errors are only retained for the [ValueStream]
+/// accessors; the scrub position never carries an error in practice.
+class _ScrubPositionStream extends Stream<Duration?> implements ValueStream<Duration?> {
+  /// Synchronous broadcast: the only producers are gesture handlers and the
+  /// only consumers are widget-side listeners, so delivering within [add]
+  /// is safe and is exactly the point of this stream.
+  final StreamController<Duration?> _controller = StreamController<Duration?>.broadcast(sync: true);
+
+  Duration? _current;
+  Object? _error;
+  StackTrace? _stackTrace;
+  bool _hasEvent = false;
+
+  /// Pushes the next scrub position (or null when a scrub ends) to all
+  /// listeners synchronously.
+  void add(Duration? event) {
+    _current = event;
+    _hasEvent = true;
+    _controller.add(event);
+  }
+
+  void addError(Object error, [StackTrace? stackTrace]) {
+    _error = error;
+    _stackTrace = stackTrace;
+    _controller.addError(error, stackTrace);
+  }
+
+  /// Closes the stream. Further [add] calls throw, as with any closed subject.
+  Future<void> close() => _controller.close();
+
+  @override
+  Duration? get valueOrNull => _current;
+
+  @override
+  Duration get value {
+    if (hasValue) {
+      return _current!;
+    }
+
+    throw ValueStreamError.hasNoValue();
+  }
+
+  @override
+  bool get hasValue => _current != null;
+
+  @override
+  Object? get errorOrNull => _error;
+
+  @override
+  Object get error {
+    if (hasError) {
+      return _error!;
+    }
+
+    throw ValueStreamError.hasNoError();
+  }
+
+  @override
+  bool get hasError => _error != null;
+
+  @override
+  StackTrace? get stackTrace => _stackTrace;
+
+  @override
+  StreamNotification<Duration?>? get lastEventOrNull =>
+      _hasEvent ? DataNotification<Duration?>(_current) : null;
+
+  @override
+  bool get isBroadcast => true;
+
+  @override
+  StreamSubscription<Duration?> listen(
+    void Function(Duration? event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    final subscription =
+        _controller.stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+
+    // Deliver the current value immediately, like a seeded subject would;
+    // synchronously because the whole point of this stream is that a listener
+    // has a defined value the moment it subscribes.
+    onData?.call(_current);
+
+    return subscription;
   }
 }
