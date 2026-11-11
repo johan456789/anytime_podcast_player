@@ -17,7 +17,7 @@ import 'package:anytime/ui/podcast/transcript_row_layout.dart';
 import 'package:anytime/ui/podcast/transcript_text.dart';
 import 'package:anytime/ui/widgets/platform_progress_indicator.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show OverflowBoxFit;
+import 'package:flutter/rendering.dart' show OverflowBoxFit, RenderSliverVariedExtentList;
 import 'package:flutter/scheduler.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
@@ -563,7 +563,7 @@ class _TranscriptViewState extends State<TranscriptView> {
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          SliverVariedExtentList(
+          _MeasuredSliverVariedExtentList(
             delegate: _TranscriptChildBuilderDelegate(
               (BuildContext context, int index) {
                 return SubtitleWidget(
@@ -576,11 +576,117 @@ class _TranscriptViewState extends State<TranscriptView> {
               layout: layout,
             ),
             itemExtentBuilder: (index, dimensions) => index < layout.length ? layout.extentOf(index) : null,
+            layout: layout,
           ),
         ],
       ),
     );
   }
+}
+
+/// A [SliverVariedExtentList] whose offset arithmetic reads the measured
+/// [TranscriptRowLayout] prefix sums directly.
+///
+/// The framework's implementation answers every offset lookup by walking
+/// [SliverVariedExtentList.itemExtentBuilder] from row 0 - O(index) per
+/// call, and it is called for the first and last laid-out row on every
+/// layout pass. Deep in a 5000-caption transcript that is thousands of
+/// callback invocations per frame during scrub jumps and follow
+/// animations. Here [RenderSliverFixedExtentBoxAdaptor.indexToLayoutOffset]
+/// is an O(1) prefix-sum lookup and the child-index lookups are O(log n)
+/// binary searches over the same monotonic offsets, which is what the
+/// measurement module was built to provide.
+class _MeasuredSliverVariedExtentList extends SliverVariedExtentList {
+  const _MeasuredSliverVariedExtentList({
+    required super.delegate,
+    required super.itemExtentBuilder,
+    required this.layout,
+  });
+
+  final TranscriptRowLayout layout;
+
+  @override
+  RenderSliverVariedExtentList createRenderObject(BuildContext context) {
+    final element = context as SliverMultiBoxAdaptorElement;
+
+    return _RenderMeasuredSliverVariedExtentList(
+      childManager: element,
+      itemExtentBuilder: itemExtentBuilder,
+      rowLayout: layout,
+    );
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, covariant _RenderMeasuredSliverVariedExtentList renderObject) {
+    super.updateRenderObject(context, renderObject);
+    renderObject.rowLayout = layout;
+  }
+}
+
+class _RenderMeasuredSliverVariedExtentList extends RenderSliverVariedExtentList {
+  _RenderMeasuredSliverVariedExtentList({
+    required super.childManager,
+    required super.itemExtentBuilder,
+    required TranscriptRowLayout rowLayout,
+  }) : _rowLayout = rowLayout;
+
+  TranscriptRowLayout _rowLayout;
+
+  // Named rowLayout (not layout): RenderObject already declares the layout
+  // method.
+  set rowLayout(TranscriptRowLayout value) {
+    if (identical(_rowLayout, value)) {
+      return;
+    }
+
+    _rowLayout = value;
+    markNeedsLayout();
+  }
+
+  /// The row that contains [scrollOffset]: the last row whose top edge is
+  /// strictly before it, mirroring the framework's sequential walk (which
+  /// also special-cases zero). O(log n) over the monotonic prefix sums.
+  int _indexForScrollOffset(double scrollOffset) {
+    if (scrollOffset <= 0.0) {
+      return 0;
+    }
+
+    var low = 0;
+    var high = _rowLayout.length - 1;
+    var result = -1;
+
+    while (low <= high) {
+      final mid = (low + high) >> 1;
+
+      if (_rowLayout.offsetOf(mid) < scrollOffset) {
+        result = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return result < 0 ? 0 : result;
+  }
+
+  @override
+  double indexToLayoutOffset(double itemExtent, int index) {
+    if (index <= 0) {
+      return 0.0;
+    }
+
+    if (index >= _rowLayout.length) {
+      return _rowLayout.totalExtent;
+    }
+
+    return _rowLayout.offsetOf(index);
+  }
+
+  @override
+  int getMinChildIndexForScrollOffset(double scrollOffset, double itemExtent) => _indexForScrollOffset(scrollOffset);
+
+  @override
+  int getMaxChildIndexForScrollOffset(double scrollOffset, double itemExtent) => _indexForScrollOffset(scrollOffset);
 }
 
 /// The transcript list's child delegate: exactly as [SliverChildBuilderDelegate]
