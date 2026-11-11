@@ -1,4 +1,4 @@
-## Unreleased
+## 1.4.4
 
 - Add a draggable playhead with a timecode bubble to both mini players.
 - The transcript now highlights the caption at the dragged timecode and
