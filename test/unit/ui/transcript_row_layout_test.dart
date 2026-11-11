@@ -106,8 +106,7 @@ void main() {
     test('stops scanning after 50 lines', () {
       final items = <Subtitle>[
         Subtitle(index: 0, start: const Duration(seconds: 0), data: '[HAN]: welcome'),
-        for (var i = 1; i < 60; i++)
-          Subtitle(index: i, start: Duration(seconds: i * 10), data: 'plain line $i'),
+        for (var i = 1; i < 60; i++) Subtitle(index: i, start: Duration(seconds: i * 10), data: 'plain line $i'),
       ];
 
       // The speaker is 59 lines back, beyond the 50-line scan limit.
@@ -233,6 +232,99 @@ void main() {
     });
   });
 
+  group('row geometry with accessibility bold text', () {
+    /// Text applies the bold-text override after merging the styles; the
+    /// spec must mirror that order or headers can wrap on screen but not in
+    /// the measurement (and the row gets clipped).
+    testWidgets('measured extents match rendered rows with boldText on', (tester) async {
+      final captions = <Subtitle>[
+        Subtitle(
+          index: 0,
+          start: const Duration(seconds: 45),
+          speaker: 'HAN',
+          data: 'A caption with an explicit speaker in the header, long '
+              'enough that its header has to make up its mind about wrapping.',
+        ),
+        Subtitle(
+          index: 1,
+          start: const Duration(seconds: 60),
+          data: 'A body line that will wrap several times at the narrow '
+              'width while the bold override is active.',
+        ),
+      ];
+
+      final audioPlayerService = _UnusedAudioPlayerService();
+      final audioBloc = AudioBloc(audioPlayerService: audioPlayerService);
+
+      addTearDown(() {
+        audioBloc.dispose();
+      });
+
+      TranscriptRowSpec? spec;
+
+      for (final width in [320.0, 411.0]) {
+        for (final scale in [1.0, 2.0]) {
+          for (final caption in captions) {
+            await tester.pumpWidget(
+              Provider<AudioBloc>.value(
+                value: audioBloc,
+                child: MaterialApp(
+                  theme: Themes.lightTheme().themeData,
+                  home: MediaQuery(
+                    data: MediaQueryData(
+                      textScaler: TextScaler.linear(scale),
+                      boldText: true,
+                    ),
+                    child: Scaffold(
+                      body: SingleChildScrollView(
+                        child: SizedBox(
+                          width: width,
+                          child: Builder(
+                            builder: (innerContext) {
+                              spec = TranscriptRowSpec.of(innerContext);
+
+                              return SubtitleWidget(
+                                key: const Key('row'),
+                                spec: spec!,
+                                subtitle: caption,
+                                highlight: true,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            await tester.pump();
+
+            // The bold override must actually be active in this tree, or
+            // the test proves nothing.
+            expect(MediaQuery.boldTextOf(tester.element(find.byKey(const Key('row')))), isTrue);
+
+            final layout = TranscriptRowLayout.compute(
+              subtitles: captions,
+              spec: spec!,
+              width: width,
+            );
+
+            final renderedHeight = tester.getSize(find.byKey(const Key('row'))).height;
+            final measuredHeight = layout.extentOf(captions.indexOf(caption));
+
+            expect(
+              (renderedHeight - measuredHeight).abs(),
+              lessThan(0.5),
+              reason: 'caption ${caption.index} at width $width scale $scale with boldText: '
+                  'rendered $renderedHeight vs measured $measuredHeight',
+            );
+          }
+        }
+      }
+    });
+  });
+
   group('list scroll extent', () {
     testWidgets('maxScrollExtent equals totalExtent minus the viewport dimension', (tester) async {
       late AudioBloc audioBloc;
@@ -265,8 +357,7 @@ void main() {
       );
 
       final position = tester
-          .state<ScrollableState>(
-              find.descendant(of: listFinder, matching: find.byType(Scrollable)).first)
+          .state<ScrollableState>(find.descendant(of: listFinder, matching: find.byType(Scrollable)).first)
           .position;
       final expected = (layout.totalExtent - position.viewportDimension).clamp(0.0, double.infinity);
 
@@ -281,9 +372,32 @@ void main() {
       const captionCount = 5000;
       const captionSeconds = 2; // 5000 * 2s = 10000s ≈ 2h47m
       final words = <String>[
-        'so', 'the', 'first', 'thing', 'we', 'need', 'to', 'do', 'is', 'understand',
-        'how', 'this', 'actually', 'works', 'in', 'practice', 'and', 'why', 'it',
-        'matters', 'for', 'everyone', 'involved', 'listen', 'carefully', 'because',
+        'so',
+        'the',
+        'first',
+        'thing',
+        'we',
+        'need',
+        'to',
+        'do',
+        'is',
+        'understand',
+        'how',
+        'this',
+        'actually',
+        'works',
+        'in',
+        'practice',
+        'and',
+        'why',
+        'it',
+        'matters',
+        'for',
+        'everyone',
+        'involved',
+        'listen',
+        'carefully',
+        'because',
       ];
       final rnd = List<int>.generate(97, (i) => (i * 31 + 13) % 97);
       final subtitles = <Subtitle>[];
@@ -397,8 +511,7 @@ void main() {
       // Let the incremental measurement job run to completion.
       final listFinder = find.byWidgetPredicate((w) => w is CustomScrollView && w.controller != null);
       final position = tester
-          .state<ScrollableState>(
-              find.descendant(of: listFinder, matching: find.byType(Scrollable)).first)
+          .state<ScrollableState>(find.descendant(of: listFinder, matching: find.byType(Scrollable)).first)
           .position;
 
       final spec = TranscriptRowSpec.of(tester.element(listFinder));

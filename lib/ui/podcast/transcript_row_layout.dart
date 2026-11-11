@@ -173,7 +173,19 @@ class TranscriptRowSpec {
     final defaultTextStyle = DefaultTextStyle.of(context);
     final defaultStyle = defaultTextStyle.style;
 
-    final rootStyle = MediaQuery.boldTextOf(context)
+    // The header is a plain Text(style: titleSmall): Text merges the
+    // default style with the given style and applies the bold-text
+    // accessibility override LAST, so the bold weight wins over
+    // titleSmall's. Mirroring that order is what keeps the header's
+    // measured line breaks identical to the rendered ones.
+    final headerStyle = defaultStyle.merge(theme.textTheme.titleSmall);
+    final effectiveHeaderStyle =
+        MediaQuery.boldTextOf(context) ? headerStyle.merge(const TextStyle(fontWeight: FontWeight.bold)) : headerStyle;
+
+    // The body is a Text.rich(bodySpan): the root span carries the default
+    // style with the bold override, and the body span's own theme style
+    // merges over it inside the paragraph, exactly as rendered.
+    final bodyRootStyle = MediaQuery.boldTextOf(context)
         ? defaultStyle.merge(const TextStyle(fontWeight: FontWeight.bold))
         : defaultStyle;
 
@@ -181,9 +193,9 @@ class TranscriptRowSpec {
       horizontalPadding: 16.0,
       topPadding: 16.0,
       bottomGap: 16.0,
-      headerStyle: rootStyle.merge(theme.textTheme.titleSmall),
+      headerStyle: effectiveHeaderStyle,
       bodyBaseStyle: theme.textTheme.titleMedium ?? const TextStyle(),
-      bodyRootStyle: rootStyle,
+      bodyRootStyle: bodyRootStyle,
       textScaler: MediaQuery.textScalerOf(context),
       textDirection: Directionality.of(context),
       textAlign: defaultTextStyle.textAlign ?? TextAlign.start,
