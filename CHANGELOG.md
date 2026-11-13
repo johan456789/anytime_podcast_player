@@ -1,3 +1,8 @@
+## 1.4.5
+
+- Ask AI now answers questions the episode transcript does not cover,
+  briefly noting that the episode does not cover them.
+
 ## 1.4.4
 
 - Add a draggable playhead with a timecode bubble to both mini players.
