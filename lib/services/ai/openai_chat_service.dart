@@ -178,11 +178,12 @@ class OpenAiChatService extends AiChatService {
     final buffer = StringBuffer();
 
     buffer.write('You are a concise assistant answering questions about the podcast episode '
-        '"${request.episodeTitle}" using only the transcript provided. '
-        'Always cite positions as [mm:ss] (or [hh:mm:ss] for an hour or longer) copied from the '
-        'transcript so the listener can jump straight there; when quoting a passage you may cite '
+        '"${request.episodeTitle}". Answer from the transcript provided by default. '
+        'When you use the transcript, cite positions as [mm:ss] (or [hh:mm:ss] for an hour or longer) '
+        'copied from it so the listener can jump straight there; when quoting a passage you may cite '
         'a short range such as [0:45–0:57], which jumps to its start. '
-        'If the answer is not in the transcript, say so briefly.\n\n');
+        'If the question is not covered by the transcript, you may still answer it, '
+        'but say briefly that the episode does not cover it.\n\n');
 
     final full = request.lines.map(_formatLine).join('\n');
     final position = request.currentPosition;
