@@ -2550,6 +2550,183 @@ class L {
           locale: localeName,
         );
   }
+
+  /// Episode multi-selection
+  String episodes_selected_count(int count) {
+    return message('episodes_selected_count') ??
+        Intl.message(
+          '${count} selected',
+          args: [count],
+          name: 'episodes_selected_count',
+          desc: 'Title of the episode selection toolbar showing how many episodes are selected',
+          locale: localeName,
+        );
+  }
+
+  String get selection_mode_close_label {
+    return message('selection_mode_close_label') ??
+        Intl.message(
+          'Exit selection',
+          name: 'selection_mode_close_label',
+          desc: 'Semantic label for the button that leaves episode selection mode',
+          locale: localeName,
+        );
+  }
+
+  String get select_all_label {
+    return message('select_all_label') ??
+        Intl.message(
+          'Select all',
+          name: 'select_all_label',
+          desc: 'Button to select every episode in the current list',
+          locale: localeName,
+        );
+  }
+
+  String get deselect_all_label {
+    return message('deselect_all_label') ??
+        Intl.message(
+          'Deselect all',
+          name: 'deselect_all_label',
+          desc: 'Button to clear the current episode selection',
+          locale: localeName,
+        );
+  }
+
+  String get bulk_played_label {
+    return message('bulk_played_label') ??
+        Intl.message(
+          'Played',
+          name: 'bulk_played_label',
+          desc: 'Selection action to mark the selected episodes as played',
+          locale: localeName,
+        );
+  }
+
+  String get bulk_unplayed_label {
+    return message('bulk_unplayed_label') ??
+        Intl.message(
+          'Unplayed',
+          name: 'bulk_unplayed_label',
+          desc: 'Selection action to mark the selected episodes as unplayed',
+          locale: localeName,
+        );
+  }
+
+  String get bulk_download_label {
+    return message('bulk_download_label') ??
+        Intl.message(
+          'Download',
+          name: 'bulk_download_label',
+          desc: 'Selection action to download the selected episodes',
+          locale: localeName,
+        );
+  }
+
+  String get bulk_queue_label {
+    return message('bulk_queue_label') ??
+        Intl.message(
+          'Queue',
+          name: 'bulk_queue_label',
+          desc: 'Selection action to add the selected episodes to the Up Next queue',
+          locale: localeName,
+        );
+  }
+
+  String get bulk_delete_downloads_label {
+    return message('bulk_delete_downloads_label') ??
+        Intl.message(
+          'Delete',
+          name: 'bulk_delete_downloads_label',
+          desc: 'Selection action to remove the downloaded episodes from the device',
+          locale: localeName,
+        );
+  }
+
+  String get bulk_delete_downloads_title {
+    return message('bulk_delete_downloads_title') ??
+        Intl.message(
+          'Delete downloads',
+          name: 'bulk_delete_downloads_title',
+          desc: 'Title of the confirmation dialog shown before deleting selected downloads',
+          locale: localeName,
+        );
+  }
+
+  String get bulk_delete_downloads_confirmation {
+    return message('bulk_delete_downloads_confirmation') ??
+        Intl.message(
+          'The downloaded episodes will be removed from your device.',
+          name: 'bulk_delete_downloads_confirmation',
+          desc: 'Message of the confirmation dialog shown before deleting selected downloads',
+          locale: localeName,
+        );
+  }
+
+  String episodes_marked_played_count(int count) {
+    return message('episodes_marked_played_count') ??
+        Intl.message(
+          '''${Intl.plural(count, one: 'Marked 1 episode as played', other: 'Marked ${count} episodes as played')}''',
+          args: [count],
+          name: 'episodes_marked_played_count',
+          desc: 'Snackbar shown after the selected episodes are marked as played',
+          locale: localeName,
+        );
+  }
+
+  String episodes_marked_unplayed_count(int count) {
+    return message('episodes_marked_unplayed_count') ??
+        Intl.message(
+          '''${Intl.plural(count, one: 'Marked 1 episode as unplayed', other: 'Marked ${count} episodes as unplayed')}''',
+          args: [count],
+          name: 'episodes_marked_unplayed_count',
+          desc: 'Snackbar shown after the selected episodes are marked as unplayed',
+          locale: localeName,
+        );
+  }
+
+  String episodes_queued_count(int count) {
+    return message('episodes_queued_count') ??
+        Intl.message(
+          '''${Intl.plural(count, one: 'Added 1 episode to Up Next', other: 'Added ${count} episodes to Up Next')}''',
+          args: [count],
+          name: 'episodes_queued_count',
+          desc: 'Snackbar shown after the selected episodes are added to the queue',
+          locale: localeName,
+        );
+  }
+
+  String episodes_downloading_count(int count) {
+    return message('episodes_downloading_count') ??
+        Intl.message(
+          '''${Intl.plural(count, one: 'Downloading 1 episode', other: 'Downloading ${count} episodes')}''',
+          args: [count],
+          name: 'episodes_downloading_count',
+          desc: 'Snackbar shown when downloads start for the selected episodes',
+          locale: localeName,
+        );
+  }
+
+  String episode_downloads_deleted_count(int count) {
+    return message('episode_downloads_deleted_count') ??
+        Intl.message(
+          '''${Intl.plural(count, one: 'Deleted 1 download', other: 'Deleted ${count} downloads')}''',
+          args: [count],
+          name: 'episode_downloads_deleted_count',
+          desc: 'Snackbar shown after the selected downloads are deleted',
+          locale: localeName,
+        );
+  }
+
+  String get undo_label {
+    return message('undo_label') ??
+        Intl.message(
+          'Undo',
+          name: 'undo_label',
+          desc: 'Snackbar action to reverse the last bulk change',
+          locale: localeName,
+        );
+  }
 }
 
 class AnytimeLocalisationsDelegate extends LocalizationsDelegate<L> {

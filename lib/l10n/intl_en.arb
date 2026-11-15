@@ -1587,5 +1587,119 @@
     "description": "Note shown when no AI provider is configured",
     "type": "text",
     "placeholders": {}
+  },
+  "episodes_selected_count": "{count} selected",
+  "@episodes_selected_count": {
+    "description": "Title of the episode selection toolbar showing how many episodes are selected",
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "selection_mode_close_label": "Exit selection",
+  "@selection_mode_close_label": {
+    "description": "Semantic label for the button that leaves episode selection mode",
+    "type": "text",
+    "placeholders": {}
+  },
+  "select_all_label": "Select all",
+  "@select_all_label": {
+    "description": "Button to select every episode in the current list",
+    "type": "text",
+    "placeholders": {}
+  },
+  "deselect_all_label": "Deselect all",
+  "@deselect_all_label": {
+    "description": "Button to clear the current episode selection",
+    "type": "text",
+    "placeholders": {}
+  },
+  "bulk_played_label": "Played",
+  "@bulk_played_label": {
+    "description": "Selection action to mark the selected episodes as played",
+    "type": "text",
+    "placeholders": {}
+  },
+  "bulk_unplayed_label": "Unplayed",
+  "@bulk_unplayed_label": {
+    "description": "Selection action to mark the selected episodes as unplayed",
+    "type": "text",
+    "placeholders": {}
+  },
+  "bulk_download_label": "Download",
+  "@bulk_download_label": {
+    "description": "Selection action to download the selected episodes",
+    "type": "text",
+    "placeholders": {}
+  },
+  "bulk_queue_label": "Queue",
+  "@bulk_queue_label": {
+    "description": "Selection action to add the selected episodes to the Up Next queue",
+    "type": "text",
+    "placeholders": {}
+  },
+  "bulk_delete_downloads_label": "Delete",
+  "@bulk_delete_downloads_label": {
+    "description": "Selection action to remove the downloaded episodes from the device",
+    "type": "text",
+    "placeholders": {}
+  },
+  "bulk_delete_downloads_title": "Delete downloads",
+  "@bulk_delete_downloads_title": {
+    "description": "Title of the confirmation dialog shown before deleting selected downloads",
+    "type": "text",
+    "placeholders": {}
+  },
+  "bulk_delete_downloads_confirmation": "The downloaded episodes will be removed from your device.",
+  "@bulk_delete_downloads_confirmation": {
+    "description": "Message of the confirmation dialog shown before deleting selected downloads",
+    "type": "text",
+    "placeholders": {}
+  },
+  "episodes_marked_played_count": "{count,plural, =1{Marked 1 episode as played}other{Marked {count} episodes as played}}",
+  "@episodes_marked_played_count": {
+    "description": "Snackbar shown after the selected episodes are marked as played",
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "episodes_marked_unplayed_count": "{count,plural, =1{Marked 1 episode as unplayed}other{Marked {count} episodes as unplayed}}",
+  "@episodes_marked_unplayed_count": {
+    "description": "Snackbar shown after the selected episodes are marked as unplayed",
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "episodes_queued_count": "{count,plural, =1{Added 1 episode to Up Next}other{Added {count} episodes to Up Next}}",
+  "@episodes_queued_count": {
+    "description": "Snackbar shown after the selected episodes are added to the queue",
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "episodes_downloading_count": "{count,plural, =1{Downloading 1 episode}other{Downloading {count} episodes}}",
+  "@episodes_downloading_count": {
+    "description": "Snackbar shown when downloads start for the selected episodes",
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "episode_downloads_deleted_count": "{count,plural, =1{Deleted 1 download}other{Deleted {count} downloads}}",
+  "@episode_downloads_deleted_count": {
+    "description": "Snackbar shown after the selected downloads are deleted",
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "undo_label": "Undo",
+  "@undo_label": {
+    "description": "Snackbar action to reverse the last bulk change",
+    "type": "text",
+    "placeholders": {}
   }
 }

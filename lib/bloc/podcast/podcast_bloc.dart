@@ -40,6 +40,16 @@ enum PodcastEvent {
   episodeSortAlphabeticalDescending,
 }
 
+/// Captures the played state of an [Episode] prior to a bulk change so the
+/// change can be undone.
+class EpisodePlayedState {
+  final Episode episode;
+  final bool played;
+  final int position;
+
+  const EpisodePlayedState(this.episode, this.played, this.position);
+}
+
 /// This BLoC provides access to the details of a given Podcast.
 ///
 /// It takes a feed URL and creates a [Podcast] instance. There are several listeners that
@@ -68,6 +78,14 @@ class PodcastBloc extends Bloc {
 
   /// Receives subscription and mark/clear as played events.
   final PublishSubject<PodcastEvent> _podcastEvent = PublishSubject<PodcastEvent>();
+
+  /// Receives requests to mark a list of episodes as played or unplayed.
+  final PublishSubject<List<Episode>> _markEpisodesPlayed = PublishSubject<List<Episode>>();
+  final PublishSubject<List<Episode>> _markEpisodesUnplayed = PublishSubject<List<Episode>>();
+
+  /// Receives requests to restore the played state of a list of episodes, undoing a bulk change.
+  final PublishSubject<List<EpisodePlayedState>> _restoreEpisodePlayedState =
+      PublishSubject<List<EpisodePlayedState>>();
 
   /// Receives episode search events.
   final BehaviorSubject<String> _podcastSearchEvent = BehaviorSubject<String>();
@@ -116,6 +134,9 @@ class PodcastBloc extends Bloc {
     /// Listen for episode search requests
     _listenPodcastSearchEvents();
 
+    /// Listen for bulk episode played state changes
+    _listenBulkEpisodeStateEvents();
+
     _listenLibraryRefresh();
   }
 
@@ -145,6 +166,9 @@ class PodcastBloc extends Bloc {
     _podcastStream.close();
     _episodesStream.close();
     _podcastEvent.close();
+    _markEpisodesPlayed.close();
+    _markEpisodesUnplayed.close();
+    _restoreEpisodePlayedState.close();
     MobileDownloadService.downloadProgress.close();
     downloadService.dispose();
     super.dispose();
@@ -489,6 +513,53 @@ class PodcastBloc extends Bloc {
     });
   }
 
+  /// Handles bulk mark played/unplayed requests from the episode selection
+  /// and the undo of a previous bulk change.
+  void _listenBulkEpisodeStateEvents() async {
+    _markEpisodesPlayed.stream.listen((episodes) => _setEpisodesPlayed(episodes, true));
+    _markEpisodesUnplayed.stream.listen((episodes) => _setEpisodesPlayed(episodes, false));
+
+    _restoreEpisodePlayedState.stream.listen((states) async {
+      final changedEpisodes = <Episode>[];
+
+      for (var state in states) {
+        state.episode.played = state.played;
+        state.episode.position = state.position;
+
+        changedEpisodes.add(state.episode);
+      }
+
+      if (changedEpisodes.isNotEmpty) {
+        await podcastService.saveEpisodes(changedEpisodes);
+        _refresh();
+      }
+    });
+  }
+
+  /// Marks the passed episodes as played (or unplayed) and saves them, in the
+  /// same way as [PodcastEvent.markAllPlayed] but limited to the given subset.
+  void _setEpisodesPlayed(List<Episode> episodes, bool played) async {
+    if (_podcast == null) {
+      return;
+    }
+
+    final changedEpisodes = <Episode>[];
+
+    for (var e in episodes) {
+      if (e.played != played) {
+        e.played = played;
+        e.position = 0;
+
+        changedEpisodes.add(e);
+      }
+    }
+
+    if (changedEpisodes.isNotEmpty) {
+      await podcastService.saveEpisodes(changedEpisodes);
+      _refresh();
+    }
+  }
+
   void applySearchFilter() {
     if (_searchTerm.isEmpty) {
       _episodesStream.add(_episodes);
@@ -506,6 +577,14 @@ class PodcastBloc extends Bloc {
   void Function(Episode?) get downloadEpisode => _downloadEpisode.add;
 
   void Function(PodcastEvent) get podcastEvent => _podcastEvent.add;
+
+  /// Sink to mark the passed episodes as played or unplayed.
+  void Function(List<Episode>) get markEpisodesPlayed => _markEpisodesPlayed.add;
+
+  void Function(List<Episode>) get markEpisodesUnplayed => _markEpisodesUnplayed.add;
+
+  /// Sink to restore a previous played state, undoing a bulk change.
+  void Function(List<EpisodePlayedState>) get restoreEpisodePlayedState => _restoreEpisodePlayedState.add;
 
   void Function(String) get podcastSearchEvent => _podcastSearchEvent.add;
 

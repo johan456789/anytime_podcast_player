@@ -21,6 +21,8 @@ class MessageLookup extends MessageLookupByLibrary {
   @override
   String get localeName => 'messages';
 
+  static m19(count) => "${Intl.plural(count, one: 'Deleted 1 download', other: 'Deleted ${count} downloads')}";
+
   static m0(days) => "${Intl.plural(days, one: 'One day ago', other: '${days} days ago')}";
 
   static m1(hours) => "${Intl.plural(hours, one: '${hours} hour ago', other: '${hours} hours ago')}";
@@ -44,6 +46,16 @@ class MessageLookup extends MessageLookupByLibrary {
   static m10(seconds) => "${seconds} sec left";
 
   static m11(weeks) => "${Intl.plural(weeks, one: '1w ago', other: '${weeks}w ago')}";
+
+  static m20(count) => "${Intl.plural(count, one: 'Downloading 1 episode', other: 'Downloading ${count} episodes')}";
+
+  static m21(count) => "${Intl.plural(count, one: 'Marked 1 episode as played', other: 'Marked ${count} episodes as played')}";
+
+  static m22(count) => "${Intl.plural(count, one: 'Marked 1 episode as unplayed', other: 'Marked ${count} episodes as unplayed')}";
+
+  static m23(count) => "${Intl.plural(count, one: 'Added 1 episode to Up Next', other: 'Added ${count} episodes to Up Next')}";
+
+  static m24(count) => "${count} selected";
 
   static m12(episodes) => "${Intl.plural(episodes, one: '1 new episode', other: '${episodes} new episodes')}";
 
@@ -89,6 +101,13 @@ class MessageLookup extends MessageLookupByLibrary {
     'audio_effect_volume_boost_label': MessageLookupByLibrary.simpleMessage('Volume Boost'),
     'audio_settings_playback_speed_label': MessageLookupByLibrary.simpleMessage('Playback Speed'),
     'auto_scroll_transcript_label': MessageLookupByLibrary.simpleMessage('Follow transcript'),
+    'bulk_delete_downloads_confirmation': MessageLookupByLibrary.simpleMessage('The downloaded episodes will be removed from your device.'),
+    'bulk_delete_downloads_label': MessageLookupByLibrary.simpleMessage('Delete'),
+    'bulk_delete_downloads_title': MessageLookupByLibrary.simpleMessage('Delete downloads'),
+    'bulk_download_label': MessageLookupByLibrary.simpleMessage('Download'),
+    'bulk_played_label': MessageLookupByLibrary.simpleMessage('Played'),
+    'bulk_queue_label': MessageLookupByLibrary.simpleMessage('Queue'),
+    'bulk_unplayed_label': MessageLookupByLibrary.simpleMessage('Unplayed'),
     'cancel_button_label': MessageLookupByLibrary.simpleMessage('Cancel'),
     'cancel_download_button_label': MessageLookupByLibrary.simpleMessage('Cancel download'),
     'cancel_option_label': MessageLookupByLibrary.simpleMessage('Cancel'),
@@ -103,6 +122,7 @@ class MessageLookup extends MessageLookupByLibrary {
     'delete_episode_confirmation': MessageLookupByLibrary.simpleMessage('Are you sure you wish to delete this episode?'),
     'delete_episode_title': MessageLookupByLibrary.simpleMessage('Delete Episode'),
     'delete_label': MessageLookupByLibrary.simpleMessage('Delete'),
+    'deselect_all_label': MessageLookupByLibrary.simpleMessage('Deselect all'),
     'discover': MessageLookupByLibrary.simpleMessage('Discover'),
     'discovery_categories_itunes': MessageLookupByLibrary.simpleMessage('All,Arts,Business,Comedy,Education,Fiction,Government,Health & Fitness,History,Kids & Family,Leisure,Music,News,Religion & Spirituality,Science,Society & Culture,Sports,TV & Film,Technology,True Crime'),
     'discovery_categories_pindex': MessageLookupByLibrary.simpleMessage('All,After-Shows,Alternative,Animals,Animation,Arts,Astronomy,Automotive,Aviation,Baseball,Basketball,Beauty,Books,Buddhism,Business,Careers,Chemistry,Christianity,Climate,Comedy,Commentary,Courses,Crafts,Cricket,Cryptocurrency,Culture,Daily,Design,Documentary,Drama,Earth,Education,Entertainment,Entrepreneurship,Family,Fantasy,Fashion,Fiction,Film,Fitness,Food,Football,Games,Garden,Golf,Government,Health,Hinduism,History,Hobbies,Hockey,Home,HowTo,Improv,Interviews,Investing,Islam,Journals,Judaism,Kids,Language,Learning,Leisure,Life,Management,Manga,Marketing,Mathematics,Medicine,Mental,Music,Natural,Nature,News,NonProfit,Nutrition,Parenting,Performing,Personal,Pets,Philosophy,Physics,Places,Politics,Relationships,Religion,Reviews,Role-Playing,Rugby,Running,Science,Self-Improvement,Sexuality,Soccer,Social,Society,Spirituality,Sports,Stand-Up,Stories,Swimming,TV,Tabletop,Technology,Tennis,Travel,True Crime,Video-Games,Visual,Volleyball,Weather,Wilderness,Wrestling'),
@@ -110,6 +130,7 @@ class MessageLookup extends MessageLookupByLibrary {
     'downloads': MessageLookupByLibrary.simpleMessage('Downloads'),
     'empty_queue_message': MessageLookupByLibrary.simpleMessage('Your queue is empty'),
     'episode_details_button_label': MessageLookupByLibrary.simpleMessage('Show episode information'),
+    'episode_downloads_deleted_count': m19,
     'episode_filter_clear_filters_button_label': MessageLookupByLibrary.simpleMessage('Clear Filters'),
     'episode_filter_no_episodes_title_description': MessageLookupByLibrary.simpleMessage('No Episodes Found'),
     'episode_filter_no_episodes_title_label': MessageLookupByLibrary.simpleMessage('No Episodes Found'),
@@ -138,6 +159,11 @@ class MessageLookup extends MessageLookupByLibrary {
     'episode_time_now': MessageLookupByLibrary.simpleMessage('Now'),
     'episode_time_second_remaining': m10,
     'episode_time_weeks_ago': m11,
+    'episodes_downloading_count': m20,
+    'episodes_marked_played_count': m21,
+    'episodes_marked_unplayed_count': m22,
+    'episodes_queued_count': m23,
+    'episodes_selected_count': m24,
     'error_no_connection': MessageLookupByLibrary.simpleMessage('Unable to play episode. Please check your connection and try again.'),
     'error_playback_fail': MessageLookupByLibrary.simpleMessage('An unexpected error occurred during playback. Please check your connection and try again.'),
     'fast_forward_button_label': MessageLookupByLibrary.simpleMessage('Fast-forward episode 30 seconds'),
@@ -217,6 +243,8 @@ class MessageLookup extends MessageLookupByLibrary {
     'search_for_podcasts_hint': MessageLookupByLibrary.simpleMessage('Search for podcasts'),
     'search_provider_label': MessageLookupByLibrary.simpleMessage('Search provider'),
     'search_transcript_label': MessageLookupByLibrary.simpleMessage('Search transcript'),
+    'select_all_label': MessageLookupByLibrary.simpleMessage('Select all'),
+    'selection_mode_close_label': MessageLookupByLibrary.simpleMessage('Exit selection'),
     'semantic_announce_loading': MessageLookupByLibrary.simpleMessage('Loading, please wait.'),
     'semantic_announce_searching': MessageLookupByLibrary.simpleMessage('Searching, please wait.'),
     'semantic_chapter_link_label': MessageLookupByLibrary.simpleMessage('Chapter web link'),
@@ -307,6 +335,7 @@ class MessageLookup extends MessageLookupByLibrary {
     'transcript_label': MessageLookupByLibrary.simpleMessage('Transcript'),
     'transcript_why_not_label': MessageLookupByLibrary.simpleMessage('Why not?'),
     'transcript_why_not_url': MessageLookupByLibrary.simpleMessage('https://anytimeplayer.app/docs/anytime_transcript_support_en.html'),
+    'undo_label': MessageLookupByLibrary.simpleMessage('Undo'),
     'unsubscribe_button_label': MessageLookupByLibrary.simpleMessage('Unfollow'),
     'unsubscribe_label': MessageLookupByLibrary.simpleMessage('Unfollow'),
     'unsubscribe_message': MessageLookupByLibrary.simpleMessage('Unfollowing will delete all downloaded episodes of this podcast.'),

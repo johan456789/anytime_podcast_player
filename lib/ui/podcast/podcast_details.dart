@@ -4,17 +4,23 @@
 
 import 'dart:async';
 
+import 'package:anytime/bloc/podcast/episode_bloc.dart';
 import 'package:anytime/bloc/podcast/podcast_bloc.dart';
+import 'package:anytime/bloc/podcast/queue_bloc.dart';
 import 'package:anytime/bloc/settings/settings_bloc.dart';
+import 'package:anytime/entities/downloadable.dart';
 import 'package:anytime/entities/episode.dart';
 import 'package:anytime/entities/feed.dart';
 import 'package:anytime/entities/podcast.dart';
 import 'package:anytime/l10n/L.dart';
 import 'package:anytime/state/bloc_state.dart';
+import 'package:anytime/state/queue_event_state.dart';
+import 'package:anytime/ui/podcast/episode_selection.dart';
 import 'package:anytime/ui/podcast/funding_menu.dart';
 import 'package:anytime/ui/podcast/playback_error_listener.dart';
 import 'package:anytime/ui/podcast/podcast_context_menu.dart';
 import 'package:anytime/ui/podcast/podcast_episode_list.dart';
+import 'package:anytime/ui/podcast/selection_action_bar.dart';
 import 'package:anytime/ui/widgets/action_text.dart';
 import 'package:anytime/ui/widgets/delayed_progress_indicator.dart';
 import 'package:anytime/ui/widgets/episode_filter_selector.dart';
@@ -57,12 +63,23 @@ class _PodcastDetailsState extends State<PodcastDetails> {
   bool toolbarCollapsed = false;
   SystemUiOverlayStyle? _systemOverlayStyle;
 
+  /// Multi-selection state for the episode list.
+  final EpisodeSelection _selection = EpisodeSelection();
+
+  /// The episodes currently displayed in the list; used by the select all
+  /// action so it respects any active search or filter.
+  List<Episode> _visibleEpisodes = <Episode>[];
+
   @override
   void initState() {
     super.initState();
 
     // Load the details of the Podcast specified in the URL
     log.fine('initState() - load feed');
+
+    // Rebuild whenever the episode selection changes so the selection app
+    // bar, tiles and action bar stay in sync.
+    _selection.addListener(_handleSelectionChanged);
 
     widget._podcastBloc.load(Feed(
       podcast: widget.podcast,
@@ -128,8 +145,16 @@ class _PodcastDetailsState extends State<PodcastDetails> {
   @override
   void dispose() {
     _sliverScrollController.dispose();
+    _selection.removeListener(_handleSelectionChanged);
+    _selection.dispose();
 
     super.dispose();
+  }
+
+  void _handleSelectionChanged() {
+    if (mounted) {
+      _updateSystemOverlayStyle();
+    }
   }
 
   Future<void> _handleRefresh() async {
@@ -170,8 +195,14 @@ class _PodcastDetailsState extends State<PodcastDetails> {
       header: false,
       label: L.of(context)!.semantics_podcast_details_header,
       child: PopScope(
-        canPop: true,
+        canPop: !_selection.selecting,
         onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            // Back was intercepted to leave selection mode first.
+            _exitSelection();
+            return;
+          }
+
           _resetSystemOverlayStyle();
           podcastBloc.podcastSearchEvent('');
         },
@@ -179,61 +210,17 @@ class _PodcastDetailsState extends State<PodcastDetails> {
           key: scaffoldMessengerKey,
           child: Scaffold(
             backgroundColor: theme.scaffoldBackgroundColor,
+            bottomNavigationBar: _selection.selecting ? _buildSelectionActionBar(context) : null,
             body: RefreshIndicator(
               displacement: 60.0,
               onRefresh: _handleRefresh,
               child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                // Disable pull-to-refresh while selecting so a drag does not
+                // fight with the selection.
+                physics: _selection.selecting ? const ClampingScrollPhysics() : const AlwaysScrollableScrollPhysics(),
                 controller: _sliverScrollController,
                 slivers: <Widget>[
-                  SliverAppBar(
-                      systemOverlayStyle: _systemOverlayStyle,
-                      title: AnimatedOpacity(
-                          opacity: toolbarCollapsed ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 500),
-                          child: Text(widget.podcast.title)),
-                      leading: PlatformBackButton(
-                        iconColour: toolbarCollapsed && theme.brightness == Brightness.light
-                            ? theme.appBarTheme.foregroundColor!
-                            : Colors.white,
-                        decorationColour: toolbarCollapsed ? const Color(0x00000000) : const Color(0x22000000),
-                        onPressed: () {
-                          _resetSystemOverlayStyle();
-                          Navigator.pop(context);
-                        },
-                      ),
-                      expandedHeight: 300.0,
-                      floating: false,
-                      pinned: true,
-                      snap: false,
-                      flexibleSpace: FlexibleSpaceBar(
-                        background: Hero(
-                          key: Key('detailhero${widget.podcast.imageUrl}:${widget.podcast.link}'),
-                          tag: '${widget.podcast.imageUrl}:${widget.podcast.link}',
-                          child: ExcludeSemantics(
-                            child: StreamBuilder<BlocState<Podcast>>(
-                                initialData: BlocEmptyState<Podcast>(),
-                                stream: podcastBloc.details,
-                                builder: (context, snapshot) {
-                                  final state = snapshot.data;
-                                  Podcast? podcast = widget.podcast;
-
-                                  if (state is BlocLoadingState<Podcast>) {
-                                    podcast = state.data;
-                                  }
-
-                                  if (state is BlocPopulatedState<Podcast>) {
-                                    podcast = state.results;
-                                  }
-
-                                  return PodcastHeaderImage(
-                                    podcast: podcast!,
-                                    placeholderBuilder: placeholderBuilder,
-                                  );
-                                }),
-                          ),
-                        ),
-                      )),
+                  _buildPodcastAppBar(theme, podcastBloc, placeholderBuilder),
                   StreamBuilder<BlocState<Podcast>>(
                       initialData: BlocEmptyState<Podcast>(),
                       stream: podcastBloc.details,
@@ -308,11 +295,14 @@ class _PodcastDetailsState extends State<PodcastDetails> {
                               stream: podcastBloc.episodes,
                               builder: (context, snapshot) {
                                 if (snapshot.hasData) {
+                                  _visibleEpisodes = snapshot.data!.whereType<Episode>().toList();
+
                                   return snapshot.data!.isNotEmpty
                                       ? PodcastEpisodeList(
                                           episodes: snapshot.data!,
                                           play: true,
                                           download: true,
+                                          selection: _selection,
                                         )
                                       : const SliverToBoxAdapter(child: NoEpisodesFound());
                                 } else {
@@ -332,6 +322,329 @@ class _PodcastDetailsState extends State<PodcastDetails> {
                         }
                       }),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The podcast details app bar with the hero artwork header.
+  ///
+  /// While episodes are being selected the bar keeps its exact geometry - no
+  /// layout shift - and only its contents change: the back button becomes an
+  /// exit button, the title shows the selection count and the select all
+  /// action is offered. When the header is expanded (over the artwork) the
+  /// selection controls are rendered light with a soft shadow for legibility,
+  /// matching the style of the back button.
+  Widget _buildPodcastAppBar(ThemeData theme, PodcastBloc podcastBloc, PlaceholderBuilder? placeholderBuilder) {
+    final selecting = _selection.selecting;
+    final allSelected = _visibleEpisodes.isNotEmpty && _selection.containsAll(_visibleEpisodes);
+    final onArtwork = !toolbarCollapsed;
+    final selectionControlColor = onArtwork ? Colors.white : theme.appBarTheme.foregroundColor!;
+    final artworkShadow = onArtwork ? const [Shadow(blurRadius: 8.0, color: Color(0x8a000000))] : const <Shadow>[];
+
+    return SliverAppBar(
+      systemOverlayStyle: _systemOverlayStyle,
+      title: selecting
+          ? AnimatedSwitcher(
+              duration: const Duration(milliseconds: 150),
+              child: Text(
+                L.of(context)!.episodes_selected_count(_selection.count),
+                key: ValueKey<int>(_selection.count),
+                style: theme.textTheme.titleLarge?.copyWith(color: selectionControlColor, shadows: artworkShadow),
+              ),
+            )
+          : AnimatedOpacity(
+              opacity: toolbarCollapsed ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 500),
+              child: Text(widget.podcast.title),
+            ),
+      leading: selecting
+          ? _SelectionCloseButton(
+              iconColour: selectionControlColor,
+              decorationColour: onArtwork ? const Color(0x22000000) : const Color(0x00000000),
+              onPressed: _exitSelection,
+            )
+          : PlatformBackButton(
+              iconColour: toolbarCollapsed && theme.brightness == Brightness.light
+                  ? theme.appBarTheme.foregroundColor!
+                  : Colors.white,
+              decorationColour: toolbarCollapsed ? const Color(0x00000000) : const Color(0x22000000),
+              onPressed: () {
+                _resetSystemOverlayStyle();
+                Navigator.pop(context);
+              },
+            ),
+      actions: selecting
+          ? <Widget>[
+              IconButton(
+                icon: Icon(
+                  allSelected ? Icons.deselect : Icons.select_all,
+                  color: selectionControlColor,
+                  shadows: artworkShadow,
+                ),
+                tooltip: allSelected ? L.of(context)!.deselect_all_label : L.of(context)!.select_all_label,
+                onPressed: () {
+                  if (allSelected) {
+                    _selection.selectNone();
+                  } else {
+                    _selection.selectAll(_visibleEpisodes);
+                  }
+                },
+              ),
+            ]
+          : null,
+      expandedHeight: 300.0,
+      floating: false,
+      pinned: true,
+      snap: false,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Hero(
+          key: Key('detailhero${widget.podcast.imageUrl}:${widget.podcast.link}'),
+          tag: '${widget.podcast.imageUrl}:${widget.podcast.link}',
+          child: ExcludeSemantics(
+            child: StreamBuilder<BlocState<Podcast>>(
+                initialData: BlocEmptyState<Podcast>(),
+                stream: podcastBloc.details,
+                builder: (context, snapshot) {
+                  final state = snapshot.data;
+                  Podcast? podcast = widget.podcast;
+
+                  if (state is BlocLoadingState<Podcast>) {
+                    podcast = state.data;
+                  }
+
+                  if (state is BlocPopulatedState<Podcast>) {
+                    podcast = state.results;
+                  }
+
+                  return PodcastHeaderImage(
+                    podcast: podcast!,
+                    placeholderBuilder: placeholderBuilder,
+                  );
+                }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The bulk action bar shown under the episode list while selecting.
+  Widget _buildSelectionActionBar(BuildContext context) {
+    return SelectionActionBar(
+      selection: _selection,
+      onMarkPlayed: _handleBulkMarkPlayed,
+      onMarkUnplayed: _handleBulkMarkUnplayed,
+      onDownload: _handleBulkDownload,
+      onQueue: _handleBulkQueue,
+      onDeleteDownloads: _handleBulkDeleteDownloads,
+    );
+  }
+
+  void _exitSelection() {
+    _selection.clear();
+  }
+
+  void _handleBulkMarkPlayed() {
+    final podcastBloc = Provider.of<PodcastBloc>(context, listen: false);
+    final changed = _selection.episodes.where((e) => !e.played).toList();
+
+    if (changed.isEmpty) {
+      return;
+    }
+
+    // Snapshot the current state before the bloc flips the episodes so the
+    // change can be undone.
+    final undoStates = [for (var e in changed) EpisodePlayedState(e, e.played, e.position)];
+
+    podcastBloc.markEpisodesPlayed(changed);
+    _exitSelection();
+
+    scaffoldMessengerKey.currentState!
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(L.of(context)!.episodes_marked_played_count(changed.length)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: L.of(context)!.undo_label,
+          onPressed: () => podcastBloc.restoreEpisodePlayedState(undoStates),
+        ),
+      ));
+  }
+
+  void _handleBulkMarkUnplayed() {
+    final podcastBloc = Provider.of<PodcastBloc>(context, listen: false);
+    final changed = _selection.episodes.where((e) => e.played).toList();
+
+    if (changed.isEmpty) {
+      return;
+    }
+
+    final undoStates = [for (var e in changed) EpisodePlayedState(e, e.played, e.position)];
+
+    podcastBloc.markEpisodesUnplayed(changed);
+    _exitSelection();
+
+    scaffoldMessengerKey.currentState!
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(L.of(context)!.episodes_marked_unplayed_count(changed.length)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: L.of(context)!.undo_label,
+          onPressed: () => podcastBloc.restoreEpisodePlayedState(undoStates),
+        ),
+      ));
+  }
+
+  void _handleBulkDownload() {
+    final podcastBloc = Provider.of<PodcastBloc>(context, listen: false);
+    final toDownload =
+        _selection.episodes.where((e) => e.downloadState == DownloadState.none && !e.downloaded).toList();
+
+    if (toDownload.isEmpty) {
+      return;
+    }
+
+    for (var e in toDownload) {
+      podcastBloc.downloadEpisode(e);
+    }
+
+    _exitSelection();
+
+    scaffoldMessengerKey.currentState!
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(L.of(context)!.episodes_downloading_count(toDownload.length)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ));
+  }
+
+  void _handleBulkQueue() {
+    final queueBloc = Provider.of<QueueBloc>(context, listen: false);
+    final selected = _selection.episodes;
+
+    if (selected.isEmpty) {
+      return;
+    }
+
+    // Episodes are queued in selection order.
+    for (var e in selected) {
+      queueBloc.queueEvent(QueueAddEvent(episode: e));
+    }
+
+    _exitSelection();
+
+    scaffoldMessengerKey.currentState!
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(L.of(context)!.episodes_queued_count(selected.length)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ));
+  }
+
+  void _handleBulkDeleteDownloads() {
+    final episodeBloc = Provider.of<EpisodeBloc>(context, listen: false);
+    final downloaded = _selection.episodes.where((e) => e.downloaded).toList();
+
+    if (downloaded.isEmpty) {
+      return;
+    }
+
+    showPlatformDialog<void>(
+      context: context,
+      useRootNavigator: false,
+      builder: (dialogContext) => BasicDialogAlert(
+        title: Text(L.of(context)!.bulk_delete_downloads_title),
+        content: Text(L.of(context)!.bulk_delete_downloads_confirmation),
+        actions: <Widget>[
+          BasicDialogAction(
+            title: ActionText(
+              L.of(context)!.cancel_button_label,
+            ),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+            },
+          ),
+          BasicDialogAction(
+            title: ActionText(
+              L.of(context)!.delete_button_label,
+            ),
+            iosIsDefaultAction: true,
+            iosIsDestructiveAction: true,
+            onPressed: () {
+              Navigator.pop(dialogContext);
+
+              for (var e in downloaded) {
+                episodeBloc.deleteDownload(e);
+              }
+
+              _exitSelection();
+
+              scaffoldMessengerKey.currentState!
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(
+                  content: Text(L.of(context)!.episode_downloads_deleted_count(downloaded.length)),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                ));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The close button shown in the app bar while episodes are being selected.
+///
+/// Styled like [PlatformBackButton] - a circular decoration behind an icon -
+/// so it looks consistent whether the header is expanded over the artwork or
+/// collapsed onto the app bar.
+class _SelectionCloseButton extends StatelessWidget {
+  final Color iconColour;
+  final Color decorationColour;
+  final VoidCallback onPressed;
+
+  const _SelectionCloseButton({
+    required this.iconColour,
+    required this.decorationColour,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Semantics(
+        button: true,
+        child: Center(
+          child: SizedBox(
+            height: 48.0,
+            width: 48.0,
+            child: InkWell(
+              onTap: onPressed,
+              customBorder: const CircleBorder(),
+              child: Container(
+                margin: const EdgeInsets.all(6.0),
+                height: 48.0,
+                width: 48.0,
+                decoration: ShapeDecoration(
+                  color: decorationColour,
+                  shape: const CircleBorder(),
+                ),
+                child: Icon(
+                  Icons.close,
+                  size: 26.0,
+                  color: iconColour,
+                  semanticLabel: L.of(context)!.selection_mode_close_label,
+                ),
               ),
             ),
           ),
@@ -365,8 +678,9 @@ class PodcastHeaderImage extends StatelessWidget {
       key: Key('details${podcast.imageUrl}'),
       url: podcast.imageUrl!,
       fit: BoxFit.cover,
-      placeholder:
-          placeholderBuilder != null ? placeholderBuilder?.builder()(context) : DelayedCircularProgressIndicator(),
+      placeholder: placeholderBuilder != null
+          ? placeholderBuilder?.builder()(context)
+          : const DelayedCircularProgressIndicator(),
       errorPlaceholder: placeholderBuilder != null
           ? placeholderBuilder?.errorBuilder()(context)
           : const Image(image: AssetImage('assets/images/anytime-placeholder-logo.png')),
