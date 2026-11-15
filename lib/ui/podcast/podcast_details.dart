@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:anytime/bloc/podcast/episode_bloc.dart';
 import 'package:anytime/bloc/podcast/podcast_bloc.dart';
@@ -63,6 +64,13 @@ class _PodcastDetailsState extends State<PodcastDetails> {
   bool toolbarCollapsed = false;
   SystemUiOverlayStyle? _systemOverlayStyle;
 
+  /// Height passed as the app bar's [SliverAppBar.expandedHeight]. Podcast
+  /// artwork is square, so this is sized to the screen width to show the
+  /// poster in full instead of cropping it; clamped for short viewports such
+  /// as landscape, where a full-height poster cannot fit. The app bar adds
+  /// the status bar inset on top of this for its overall extent.
+  double _expandedHeight = 300.0;
+
   /// Multi-selection state for the episode list.
   final EpisodeSelection _selection = EpisodeSelection();
 
@@ -93,14 +101,14 @@ class _PodcastDetailsState extends State<PodcastDetails> {
     _sliverScrollController.addListener(() {
       if (!toolbarCollapsed &&
           _sliverScrollController.hasClients &&
-          _sliverScrollController.offset > (300 - kToolbarHeight)) {
+          _sliverScrollController.offset > (_expandedHeight - kToolbarHeight)) {
         setState(() {
           toolbarCollapsed = true;
           _updateSystemOverlayStyle();
         });
       } else if (toolbarCollapsed &&
           _sliverScrollController.hasClients &&
-          _sliverScrollController.offset < (300 - kToolbarHeight)) {
+          _sliverScrollController.offset < (_expandedHeight - kToolbarHeight)) {
         setState(() {
           toolbarCollapsed = false;
           _updateSystemOverlayStyle();
@@ -135,9 +143,14 @@ class _PodcastDetailsState extends State<PodcastDetails> {
 
   @override
   void didChangeDependencies() {
+    final mediaQuery = MediaQuery.of(context);
+    _expandedHeight = math.min(mediaQuery.size.width, mediaQuery.size.height * 0.8);
     _systemOverlayStyle = SystemUiOverlayStyle(
       statusBarIconBrightness: Theme.of(context).brightness == Brightness.light ? Brightness.dark : Brightness.light,
-      statusBarColor: Theme.of(context).appBarTheme.backgroundColor!.withValues(alpha: toolbarCollapsed ? 1.0 : 0.5),
+      // The app bar paints an opaque band over the status bar area (Android
+      // 15+ ignores statusBarColor for apps targeting SDK 35), so keep the
+      // system bar itself transparent.
+      statusBarColor: Colors.transparent,
     );
     super.didChangeDependencies();
   }
@@ -179,7 +192,7 @@ class _PodcastDetailsState extends State<PodcastDetails> {
     setState(() {
       _systemOverlayStyle = SystemUiOverlayStyle(
         statusBarIconBrightness: Theme.of(context).brightness == Brightness.light ? Brightness.dark : Brightness.light,
-        statusBarColor: Theme.of(context).appBarTheme.backgroundColor!.withValues(alpha: toolbarCollapsed ? 1.0 : 0.5),
+        statusBarColor: Colors.transparent,
       );
     });
   }
@@ -344,6 +357,7 @@ class _PodcastDetailsState extends State<PodcastDetails> {
     final onArtwork = !toolbarCollapsed;
     final selectionControlColor = onArtwork ? Colors.white : theme.appBarTheme.foregroundColor!;
     final artworkShadow = onArtwork ? const [Shadow(blurRadius: 8.0, color: Color(0x8a000000))] : const <Shadow>[];
+    final topInset = MediaQuery.paddingOf(context).top;
 
     return SliverAppBar(
       systemOverlayStyle: _systemOverlayStyle,
@@ -396,37 +410,61 @@ class _PodcastDetailsState extends State<PodcastDetails> {
               ),
             ]
           : null,
-      expandedHeight: 300.0,
+      expandedHeight: _expandedHeight,
       floating: false,
       pinned: true,
       snap: false,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Hero(
-          key: Key('detailhero${widget.podcast.imageUrl}:${widget.podcast.link}'),
-          tag: '${widget.podcast.imageUrl}:${widget.podcast.link}',
-          child: ExcludeSemantics(
-            child: StreamBuilder<BlocState<Podcast>>(
-                initialData: BlocEmptyState<Podcast>(),
-                stream: podcastBloc.details,
-                builder: (context, snapshot) {
-                  final state = snapshot.data;
-                  Podcast? podcast = widget.podcast;
+      flexibleSpace: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          FlexibleSpaceBar(
+            // The poster starts below the opaque status bar band so it is
+            // shown in full.
+            background: Padding(
+              padding: EdgeInsets.only(top: topInset),
+              child: Hero(
+                key: Key('detailhero${widget.podcast.imageUrl}:${widget.podcast.link}'),
+                tag: '${widget.podcast.imageUrl}:${widget.podcast.link}',
+                child: ExcludeSemantics(
+                  child: StreamBuilder<BlocState<Podcast>>(
+                      initialData: BlocEmptyState<Podcast>(),
+                      stream: podcastBloc.details,
+                      builder: (context, snapshot) {
+                        final state = snapshot.data;
+                        Podcast? podcast = widget.podcast;
 
-                  if (state is BlocLoadingState<Podcast>) {
-                    podcast = state.data;
-                  }
+                        if (state is BlocLoadingState<Podcast>) {
+                          podcast = state.data;
+                        }
 
-                  if (state is BlocPopulatedState<Podcast>) {
-                    podcast = state.results;
-                  }
+                        if (state is BlocPopulatedState<Podcast>) {
+                          podcast = state.results;
+                        }
 
-                  return PodcastHeaderImage(
-                    podcast: podcast!,
-                    placeholderBuilder: placeholderBuilder,
-                  );
-                }),
+                        return PodcastHeaderImage(
+                          podcast: podcast!,
+                          placeholderBuilder: placeholderBuilder,
+                        );
+                      }),
+                ),
+              ),
+            ),
           ),
-        ),
+          // Android 15+ no longer honours statusBarColor for apps targeting
+          // SDK 35, so paint an opaque band over the status bar area instead;
+          // the artwork then starts below it and the overlay icons stay
+          // legible. When the toolbar is collapsed the band blends invisibly
+          // into the solid app bar background.
+          Positioned(
+            top: 0.0,
+            left: 0.0,
+            right: 0.0,
+            height: topInset,
+            child: ColoredBox(
+              color: theme.appBarTheme.backgroundColor!,
+            ),
+          ),
+        ],
       ),
     );
   }
