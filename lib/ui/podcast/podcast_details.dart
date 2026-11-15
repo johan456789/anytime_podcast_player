@@ -137,7 +137,10 @@ class _PodcastDetailsState extends State<PodcastDetails> {
   void didChangeDependencies() {
     _systemOverlayStyle = SystemUiOverlayStyle(
       statusBarIconBrightness: Theme.of(context).brightness == Brightness.light ? Brightness.dark : Brightness.light,
-      statusBarColor: Theme.of(context).appBarTheme.backgroundColor!.withValues(alpha: toolbarCollapsed ? 1.0 : 0.5),
+      // The app bar paints an opaque band over the status bar area (Android
+      // 15+ ignores statusBarColor for apps targeting SDK 35), so keep the
+      // system bar itself transparent.
+      statusBarColor: Colors.transparent,
     );
     super.didChangeDependencies();
   }
@@ -179,7 +182,7 @@ class _PodcastDetailsState extends State<PodcastDetails> {
     setState(() {
       _systemOverlayStyle = SystemUiOverlayStyle(
         statusBarIconBrightness: Theme.of(context).brightness == Brightness.light ? Brightness.dark : Brightness.light,
-        statusBarColor: Theme.of(context).appBarTheme.backgroundColor!.withValues(alpha: toolbarCollapsed ? 1.0 : 0.5),
+        statusBarColor: Colors.transparent,
       );
     });
   }
@@ -400,33 +403,52 @@ class _PodcastDetailsState extends State<PodcastDetails> {
       floating: false,
       pinned: true,
       snap: false,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Hero(
-          key: Key('detailhero${widget.podcast.imageUrl}:${widget.podcast.link}'),
-          tag: '${widget.podcast.imageUrl}:${widget.podcast.link}',
-          child: ExcludeSemantics(
-            child: StreamBuilder<BlocState<Podcast>>(
-                initialData: BlocEmptyState<Podcast>(),
-                stream: podcastBloc.details,
-                builder: (context, snapshot) {
-                  final state = snapshot.data;
-                  Podcast? podcast = widget.podcast;
+      flexibleSpace: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          FlexibleSpaceBar(
+            background: Hero(
+              key: Key('detailhero${widget.podcast.imageUrl}:${widget.podcast.link}'),
+              tag: '${widget.podcast.imageUrl}:${widget.podcast.link}',
+              child: ExcludeSemantics(
+                child: StreamBuilder<BlocState<Podcast>>(
+                    initialData: BlocEmptyState<Podcast>(),
+                    stream: podcastBloc.details,
+                    builder: (context, snapshot) {
+                      final state = snapshot.data;
+                      Podcast? podcast = widget.podcast;
 
-                  if (state is BlocLoadingState<Podcast>) {
-                    podcast = state.data;
-                  }
+                      if (state is BlocLoadingState<Podcast>) {
+                        podcast = state.data;
+                      }
 
-                  if (state is BlocPopulatedState<Podcast>) {
-                    podcast = state.results;
-                  }
+                      if (state is BlocPopulatedState<Podcast>) {
+                        podcast = state.results;
+                      }
 
-                  return PodcastHeaderImage(
-                    podcast: podcast!,
-                    placeholderBuilder: placeholderBuilder,
-                  );
-                }),
+                      return PodcastHeaderImage(
+                        podcast: podcast!,
+                        placeholderBuilder: placeholderBuilder,
+                      );
+                    }),
+              ),
+            ),
           ),
-        ),
+          // Android 15+ no longer honours statusBarColor for apps targeting
+          // SDK 35, so paint an opaque band over the status bar area instead;
+          // the artwork then starts below it and the overlay icons stay
+          // legible. When the toolbar is collapsed the band blends invisibly
+          // into the solid app bar background.
+          Positioned(
+            top: 0.0,
+            left: 0.0,
+            right: 0.0,
+            height: MediaQuery.paddingOf(context).top,
+            child: ColoredBox(
+              color: theme.appBarTheme.backgroundColor!,
+            ),
+          ),
+        ],
       ),
     );
   }
