@@ -1,3 +1,13 @@
+## 1.4.6
+
+- Long-press an episode on the podcast page to enter multi-select; tap
+  episodes to grow the selection, or select all from the app bar.
+- Bulk actions for the selected episodes: mark played/unplayed (with
+  undo), download, add to the Up Next queue and delete downloads.
+- Entering selection keeps the page layout stable - only the app bar
+  controls, tile check badges and the bottom action bar change.
+- Cancel the delayed artwork placeholder timer when it is disposed.
+
 ## 1.4.5
 
 - Ask AI now answers questions the episode transcript does not cover,

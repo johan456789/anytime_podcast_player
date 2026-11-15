@@ -5,6 +5,7 @@
 import 'package:anytime/bloc/podcast/queue_bloc.dart';
 import 'package:anytime/entities/episode.dart';
 import 'package:anytime/state/queue_event_state.dart';
+import 'package:anytime/ui/podcast/episode_selection.dart';
 import 'package:anytime/ui/widgets/episode_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,9 @@ class PodcastEpisodeList extends StatelessWidget {
   final bool play;
   final bool download;
 
+  /// When set, episodes can be long-pressed to enter multi-selection mode.
+  final EpisodeSelection? selection;
+
   static const _defaultIcon = Icons.add_alert;
 
   const PodcastEpisodeList({
@@ -25,6 +29,7 @@ class PodcastEpisodeList extends StatelessWidget {
     required this.download,
     this.icon = _defaultIcon,
     this.emptyMessage = '',
+    this.selection,
   });
 
   @override
@@ -33,6 +38,7 @@ class PodcastEpisodeList extends StatelessWidget {
 
     if (episodes != null && episodes!.isNotEmpty) {
       var queueBloc = Provider.of<QueueBloc>(context);
+      final selection = this.selection;
 
       return StreamBuilder<QueueState>(
           stream: queueBloc.queue,
@@ -58,6 +64,10 @@ class PodcastEpisodeList extends StatelessWidget {
                   play: play,
                   playing: playing,
                   queued: queued,
+                  selectionMode: selection?.selecting ?? false,
+                  selected: selection?.isSelected(episode) ?? false,
+                  onSelect: selection == null ? null : () => selection.toggle(episode),
+                  onEnterSelection: selection == null ? null : () => selection.enterSelectionWith(episode),
                 );
               },
               itemCount: episodes!.length,

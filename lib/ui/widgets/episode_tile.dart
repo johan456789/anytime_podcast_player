@@ -21,6 +21,7 @@ import 'package:anytime/ui/widgets/tile_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dialogs/flutter_dialogs.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:provider/provider.dart';
@@ -34,6 +35,18 @@ class EpisodeTile extends StatelessWidget {
   final bool playing;
   final bool queued;
 
+  /// True while the parent list is in multi-selection mode.
+  final bool selectionMode;
+
+  /// True if this episode is currently selected.
+  final bool selected;
+
+  /// Called when the tile is tapped while in selection mode.
+  final VoidCallback? onSelect;
+
+  /// Called when the tile is long-pressed to enter selection mode.
+  final VoidCallback? onEnterSelection;
+
   const EpisodeTile({
     super.key,
     required this.episode,
@@ -41,6 +54,10 @@ class EpisodeTile extends StatelessWidget {
     required this.play,
     this.playing = false,
     this.queued = false,
+    this.selectionMode = false,
+    this.selected = false,
+    this.onSelect,
+    this.onEnterSelection,
   });
 
   @override
@@ -72,6 +89,10 @@ class EpisodeTile extends StatelessWidget {
         play: play,
         playing: playing,
         queued: queued,
+        selectionMode: selectionMode,
+        selected: selected,
+        onSelect: onSelect,
+        onEnterSelection: onEnterSelection,
       );
     }
   }
@@ -90,6 +111,10 @@ class ExpandableEpisodeTile extends StatefulWidget {
   final bool play;
   final bool playing;
   final bool queued;
+  final bool selectionMode;
+  final bool selected;
+  final VoidCallback? onSelect;
+  final VoidCallback? onEnterSelection;
 
   const ExpandableEpisodeTile({
     super.key,
@@ -98,6 +123,10 @@ class ExpandableEpisodeTile extends StatefulWidget {
     required this.play,
     this.playing = false,
     this.queued = false,
+    this.selectionMode = false,
+    this.selected = false,
+    this.onSelect,
+    this.onEnterSelection,
   });
 
   @override
@@ -113,8 +142,9 @@ class _ExpandableEpisodeTileState extends State<ExpandableEpisodeTile> {
     final textTheme = Theme.of(context).textTheme;
     final episodeBloc = Provider.of<EpisodeBloc>(context);
     final queueBloc = Provider.of<QueueBloc>(context);
+    final selectionTint = theme.colorScheme.secondary.withValues(alpha: 0.18);
 
-    return ExpansionTile(
+    Widget tile = ExpansionTile(
       tilePadding: const EdgeInsets.fromLTRB(16.0, 0.0, 8.0, 0.0),
       key: Key('PT${widget.episode.guid}'),
       onExpansionChanged: (isExpanded) {
@@ -122,14 +152,18 @@ class _ExpandableEpisodeTileState extends State<ExpandableEpisodeTile> {
           expanded = isExpanded;
         });
       },
-      trailing: Opacity(
-        opacity: widget.episode.played ? 0.5 : 1.0,
-        child: EpisodeTransportControls(
-          episode: widget.episode,
-          download: widget.download,
-          play: widget.play,
-        ),
-      ),
+      backgroundColor: widget.selected ? selectionTint : null,
+      collapsedBackgroundColor: widget.selected ? selectionTint : null,
+      trailing: widget.selectionMode
+          ? null
+          : Opacity(
+              opacity: widget.episode.played ? 0.5 : 1.0,
+              child: EpisodeTransportControls(
+                episode: widget.episode,
+                download: widget.download,
+                play: widget.play,
+              ),
+            ),
       leading: ExcludeSemantics(
         child: Stack(
           alignment: Alignment.bottomLeft,
@@ -150,6 +184,7 @@ class _ExpandableEpisodeTileState extends State<ExpandableEpisodeTile> {
                 color: Theme.of(context).primaryColor,
               ),
             ),
+            if (widget.selectionMode) SelectionCheck(selected: widget.selected),
           ],
         ),
       ),
@@ -378,6 +413,74 @@ class _ExpandableEpisodeTileState extends State<ExpandableEpisodeTile> {
           ),
         ),
       ],
+    );
+
+    // While selecting, the tile must not expand; taps toggle the selection
+    // instead. Outside of selection mode, a long-press enters selection mode
+    // with this episode pre-selected and a tap still expands the tile.
+    if (widget.selectionMode) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onSelect,
+        child: IgnorePointer(
+          ignoring: true,
+          child: tile,
+        ),
+      );
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPress: widget.onEnterSelection == null
+          ? null
+          : () {
+              HapticFeedback.mediumImpact();
+              widget.onEnterSelection!();
+            },
+      child: tile,
+    );
+  }
+}
+
+/// The selection indicator overlaid on the episode artwork while the user is
+/// selecting episodes.
+class SelectionCheck extends StatelessWidget {
+  final bool selected;
+
+  const SelectionCheck({super.key, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56.0,
+      width: 56.0,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(color: Color(0x59000000)),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 150),
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: animation,
+              child: child,
+            ),
+            child: selected
+                ? Icon(
+                    Icons.check_circle,
+                    key: const ValueKey(true),
+                    size: 26.0,
+                    color: Theme.of(context).colorScheme.secondary,
+                    shadows: const [Shadow(blurRadius: 6.0, color: Color(0xaa000000))],
+                  )
+                : const Icon(
+                    Icons.circle_outlined,
+                    key: ValueKey(false),
+                    size: 26.0,
+                    color: Colors.white,
+                    shadows: [Shadow(blurRadius: 6.0, color: Color(0xaa000000))],
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }
