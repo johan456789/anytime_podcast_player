@@ -1,3 +1,12 @@
+## 1.4.7
+
+- Keep the status bar visible on the podcast page. On Android 15+ the
+  artwork was drawn behind the status bar icons and hid them; the
+  status bar is now an opaque band above the artwork.
+- Show the full podcast poster in the details header instead of
+  cropping the top and bottom; the banner is sized to the screen width
+  so square artwork fits exactly.
+
 ## 1.4.6
 
 - Long-press an episode on the podcast page to enter multi-select; tap
