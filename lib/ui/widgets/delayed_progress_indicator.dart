@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
+
 import 'package:anytime/ui/widgets/platform_progress_indicator.dart';
 import 'package:flutter/material.dart';
 
@@ -13,25 +15,47 @@ import 'package:flutter/material.dart';
 /// flashing on screen as the cached image is loaded. Images that take longer to fetch
 /// or process from the cache will result in a [PlatformProgressIndicator] indicator
 /// being displayed.
-class DelayedCircularProgressIndicator extends StatelessWidget {
-  final f = Future.delayed(const Duration(milliseconds: 1000), () => Container());
-
-  DelayedCircularProgressIndicator({
+class DelayedCircularProgressIndicator extends StatefulWidget {
+  const DelayedCircularProgressIndicator({
     super.key,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Widget>(
-        future: f,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return const Center(
-              child: PlatformProgressIndicator(),
-            );
-          } else {
-            return Container();
-          }
+  State<DelayedCircularProgressIndicator> createState() => _DelayedCircularProgressIndicatorState();
+}
+
+class _DelayedCircularProgressIndicatorState extends State<DelayedCircularProgressIndicator> {
+  static const delay = Duration(milliseconds: 1000);
+
+  Timer? _timer;
+  bool _elapsed = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _timer = Timer(delay, () {
+      if (mounted) {
+        setState(() {
+          _elapsed = true;
         });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _elapsed
+        ? const Center(
+            child: PlatformProgressIndicator(),
+          )
+        : Container();
   }
 }
