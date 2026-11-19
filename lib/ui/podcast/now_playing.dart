@@ -144,7 +144,7 @@ class _NowPlayingState extends State<NowPlaying> with WidgetsBindingObserver {
                               /// the draggable panel from jumping as you start to pull it up. I am really looking
                               /// forward to the Dart team fixing the nested scroll issues with [DraggableScrollableSheet]
                               SizedBox(
-                                height: 64.0,
+                                height: 84.0,
                                 child: scrollPos == 1
                                     ? Opacity(
                                         opacity: opacity,

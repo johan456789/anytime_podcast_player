@@ -87,7 +87,7 @@ class _MiniPlayerBuilderState extends State<_MiniPlayerBuilder> with SingleTicke
       direction: DismissDirection.startToEnd,
       background: Container(
         color: theme.colorScheme.surface,
-        height: 64.0,
+        height: 84.0,
       ),
       child: GestureDetector(
         key: const Key('miniplayergesture'),
@@ -114,7 +114,11 @@ class _MiniPlayerBuilderState extends State<_MiniPlayerBuilder> with SingleTicke
           header: true,
           label: L.of(context)!.semantics_mini_player_header,
           child: Container(
-            height: 66,
+            // Tall enough for the content row plus the progress bar strip
+            // below it: the playhead needs clearance above (artwork) and
+            // below (the bottom navigation bar starts flush against this
+            // player's bottom edge).
+            height: 84,
             decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 border: Border(
@@ -268,10 +272,12 @@ class _MiniPlayerBuilderState extends State<_MiniPlayerBuilder> with SingleTicke
                     ],
                   ),
                 ),
+                // Lifted off the bottom edge so the playhead does not sit
+                // on the navigation bar directly below this player.
                 const Positioned(
                   left: 0.0,
                   right: 0.0,
-                  bottom: 0.0,
+                  bottom: 6.0,
                   child: MiniPlayerProgressBar(),
                 ),
               ],
