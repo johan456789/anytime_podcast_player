@@ -47,6 +47,7 @@ import 'package:anytime/ui/search/search.dart';
 import 'package:anytime/ui/settings/settings.dart';
 import 'package:anytime/ui/themes.dart';
 import 'package:anytime/ui/widgets/action_text.dart';
+import 'package:anytime/ui/widgets/app_bottom_navigation.dart';
 import 'package:anytime/ui/widgets/layout_selector.dart';
 import 'package:anytime/ui/widgets/search_slide_route.dart';
 import 'package:app_links/app_links.dart';
@@ -559,44 +560,7 @@ class _AnytimeHomePageState extends State<AnytimeHomePage> with WidgetsBindingOb
             const MiniPlayer(),
           ],
         ),
-        bottomNavigationBar: StreamBuilder<int>(
-            stream: pager.currentPage,
-            initialData: 0,
-            builder: (BuildContext context, AsyncSnapshot<int> snapshot) {
-              int index = snapshot.data ?? 0;
-
-              return BottomNavigationBar(
-                type: BottomNavigationBarType.fixed,
-                backgroundColor: theme.bottomAppBarTheme.color,
-                selectedIconTheme: theme.iconTheme,
-                selectedItemColor: theme.iconTheme.color,
-                selectedFontSize: 11.0,
-                unselectedFontSize: 11.0,
-                unselectedItemColor:
-                    HSLColor.fromColor(theme.bottomAppBarTheme.color!).withLightness(0.8).toColor(),
-                currentIndex: index,
-                onTap: pager.changePage,
-                items: <BottomNavigationBarItem>[
-                  BottomNavigationBarItem(
-                    icon: index == 0 ? const Icon(Icons.library_music) : const Icon(Icons.library_music_outlined),
-                    label: L.of(context)!.library,
-                  ),
-                  // To be fleshed out later.
-                  // BottomNavigationBarItem(
-                  //   icon: index == 0 ? Icon(Icons.article_rounded) : Icon(Icons.article_outlined),
-                  //   label: 'Episodes',
-                  // ),
-                  BottomNavigationBarItem(
-                    icon: index == 1 ? const Icon(Icons.explore) : const Icon(Icons.explore_outlined),
-                    label: L.of(context)!.discover,
-                  ),
-                  BottomNavigationBarItem(
-                    icon: index == 2 ? const Icon(Icons.download) : const Icon(Icons.download_outlined),
-                    label: L.of(context)!.downloads,
-                  ),
-                ],
-              );
-            }),
+        bottomNavigationBar: const AppBottomNavigationBar(),
       ),
     );
   }
