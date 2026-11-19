@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:anytime/bloc/podcast/episode_bloc.dart';
 import 'package:anytime/bloc/podcast/podcast_bloc.dart';
@@ -18,11 +17,13 @@ import 'package:anytime/state/bloc_state.dart';
 import 'package:anytime/state/queue_event_state.dart';
 import 'package:anytime/ui/podcast/episode_selection.dart';
 import 'package:anytime/ui/podcast/funding_menu.dart';
+import 'package:anytime/ui/podcast/mini_player.dart';
 import 'package:anytime/ui/podcast/playback_error_listener.dart';
 import 'package:anytime/ui/podcast/podcast_context_menu.dart';
 import 'package:anytime/ui/podcast/podcast_episode_list.dart';
 import 'package:anytime/ui/podcast/selection_action_bar.dart';
 import 'package:anytime/ui/widgets/action_text.dart';
+import 'package:anytime/ui/widgets/app_bottom_navigation.dart';
 import 'package:anytime/ui/widgets/delayed_progress_indicator.dart';
 import 'package:anytime/ui/widgets/episode_filter_selector.dart';
 import 'package:anytime/ui/widgets/episode_sort_selector.dart';
@@ -32,7 +33,6 @@ import 'package:anytime/ui/widgets/platform_progress_indicator.dart';
 import 'package:anytime/ui/widgets/podcast_html.dart';
 import 'package:anytime/ui/widgets/podcast_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dialogs/flutter_dialogs.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:logging/logging.dart';
@@ -60,16 +60,12 @@ class _PodcastDetailsState extends State<PodcastDetails> {
   final log = Logger('PodcastDetails');
   final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   final ScrollController _sliverScrollController = ScrollController();
-  var brightness = Brightness.dark;
   bool toolbarCollapsed = false;
-  SystemUiOverlayStyle? _systemOverlayStyle;
 
-  /// Height passed as the app bar's [SliverAppBar.expandedHeight]. Podcast
-  /// artwork is square, so this is sized to the screen width to show the
-  /// poster in full instead of cropping it; clamped for short viewports such
-  /// as landscape, where a full-height poster cannot fit. The app bar adds
-  /// the status bar inset on top of this for its overall extent.
-  double _expandedHeight = 300.0;
+  /// Scroll offset at which the podcast title fades into the toolbar. The
+  /// compact header (artwork, title and description) sits below the toolbar;
+  /// once the user has scrolled past it the toolbar title gives context again.
+  static const double _titleCollapseOffset = 180.0;
 
   /// Multi-selection state for the episode list.
   final EpisodeSelection _selection = EpisodeSelection();
@@ -101,17 +97,15 @@ class _PodcastDetailsState extends State<PodcastDetails> {
     _sliverScrollController.addListener(() {
       if (!toolbarCollapsed &&
           _sliverScrollController.hasClients &&
-          _sliverScrollController.offset > (_expandedHeight - kToolbarHeight)) {
+          _sliverScrollController.offset > _titleCollapseOffset) {
         setState(() {
           toolbarCollapsed = true;
-          _updateSystemOverlayStyle();
         });
       } else if (toolbarCollapsed &&
           _sliverScrollController.hasClients &&
-          _sliverScrollController.offset < (_expandedHeight - kToolbarHeight)) {
+          _sliverScrollController.offset < _titleCollapseOffset) {
         setState(() {
           toolbarCollapsed = false;
-          _updateSystemOverlayStyle();
         });
       }
     });
@@ -142,20 +136,6 @@ class _PodcastDetailsState extends State<PodcastDetails> {
   }
 
   @override
-  void didChangeDependencies() {
-    final mediaQuery = MediaQuery.of(context);
-    _expandedHeight = math.min(mediaQuery.size.width, mediaQuery.size.height * 0.8);
-    _systemOverlayStyle = SystemUiOverlayStyle(
-      statusBarIconBrightness: Theme.of(context).brightness == Brightness.light ? Brightness.dark : Brightness.light,
-      // The app bar paints an opaque band over the status bar area (Android
-      // 15+ ignores statusBarColor for apps targeting SDK 35), so keep the
-      // system bar itself transparent.
-      statusBarColor: Colors.transparent,
-    );
-    super.didChangeDependencies();
-  }
-
-  @override
   void dispose() {
     _sliverScrollController.dispose();
     _selection.removeListener(_handleSelectionChanged);
@@ -166,7 +146,10 @@ class _PodcastDetailsState extends State<PodcastDetails> {
 
   void _handleSelectionChanged() {
     if (mounted) {
-      _updateSystemOverlayStyle();
+      setState(() {
+        // Rebuild so the app bar and the bottom action bar reflect the
+        // current selection state.
+      });
     }
   }
 
@@ -179,22 +162,19 @@ class _PodcastDetailsState extends State<PodcastDetails> {
     ));
   }
 
-  void _resetSystemOverlayStyle() {
-    setState(() {
-      _systemOverlayStyle = SystemUiOverlayStyle(
-        statusBarIconBrightness: Theme.of(context).brightness == Brightness.light ? Brightness.dark : Brightness.light,
-        statusBarColor: Colors.transparent,
-      );
-    });
-  }
+  /// The podcast shown in the compact header: the loaded details when
+  /// available, falling back to any partial data still loading, or the
+  /// podcast the user navigated here with.
+  Podcast _resolvePodcast(BlocState<Podcast>? state) {
+    if (state is BlocPopulatedState<Podcast> && state.results != null) {
+      return state.results!;
+    }
 
-  void _updateSystemOverlayStyle() {
-    setState(() {
-      _systemOverlayStyle = SystemUiOverlayStyle(
-        statusBarIconBrightness: Theme.of(context).brightness == Brightness.light ? Brightness.dark : Brightness.light,
-        statusBarColor: Colors.transparent,
-      );
-    });
+    if (state is BlocLoadingState<Podcast> && state.data != null) {
+      return state.data!;
+    }
+
+    return widget.podcast;
   }
 
   /// TODO: This really needs a refactor. There are too many nested streams on this now and it needs simplifying.
@@ -202,7 +182,6 @@ class _PodcastDetailsState extends State<PodcastDetails> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final podcastBloc = Provider.of<PodcastBloc>(context, listen: false);
-    final placeholderBuilder = PlaceholderBuilder.of(context);
 
     return Semantics(
       header: false,
@@ -216,14 +195,29 @@ class _PodcastDetailsState extends State<PodcastDetails> {
             return;
           }
 
-          _resetSystemOverlayStyle();
           podcastBloc.podcastSearchEvent('');
         },
         child: ScaffoldMessenger(
           key: scaffoldMessengerKey,
           child: Scaffold(
             backgroundColor: theme.scaffoldBackgroundColor,
-            bottomNavigationBar: _selection.selecting ? _buildSelectionActionBar(context) : null,
+            // The mini player and the app's bottom navigation bar remain in
+            // place while the user browses this podcast's episodes.
+            bottomNavigationBar: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const MiniPlayer(),
+                if (_selection.selecting)
+                  // The action bar sits above the navigation bar, so it must
+                  // not apply the bottom safe area inset a second time.
+                  MediaQuery.removePadding(
+                    context: context,
+                    removeBottom: true,
+                    child: _buildSelectionActionBar(context),
+                  ),
+                const AppBottomNavigationBar(embedded: true),
+              ],
+            ),
             body: RefreshIndicator(
               displacement: 60.0,
               onRefresh: _handleRefresh,
@@ -233,25 +227,12 @@ class _PodcastDetailsState extends State<PodcastDetails> {
                 physics: _selection.selecting ? const ClampingScrollPhysics() : const AlwaysScrollableScrollPhysics(),
                 controller: _sliverScrollController,
                 slivers: <Widget>[
-                  _buildPodcastAppBar(theme, podcastBloc, placeholderBuilder),
+                  _buildPodcastAppBar(theme),
                   StreamBuilder<BlocState<Podcast>>(
                       initialData: BlocEmptyState<Podcast>(),
                       stream: podcastBloc.details,
                       builder: (context, snapshot) {
                         final state = snapshot.data;
-
-                        if (state is BlocLoadingState) {
-                          return const SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.all(24.0),
-                              child: Column(
-                                children: <Widget>[
-                                  PlatformProgressIndicator(),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
 
                         if (state is BlocErrorState) {
                           return SliverFillRemaining(
@@ -277,25 +258,27 @@ class _PodcastDetailsState extends State<PodcastDetails> {
                           );
                         }
 
-                        if (state is BlocPopulatedState<Podcast>) {
-                          return SliverToBoxAdapter(
-                              child: PlaybackErrorListener(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                PodcastTitle(state.results!),
-                                const Divider(),
-                              ],
-                            ),
-                          ));
-                        }
-
-                        return const SliverToBoxAdapter(
-                          child: SizedBox(
-                            width: 0.0,
-                            height: 0.0,
+                        // The compact header is always displayed - the artwork
+                        // and title are usually already known from the search
+                        // result or subscription before the feed has finished
+                        // loading.
+                        return SliverToBoxAdapter(
+                            child: PlaybackErrorListener(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              PodcastTitle(_resolvePodcast(state)),
+                              if (state is BlocLoadingState)
+                                const Padding(
+                                  padding: EdgeInsets.all(24.0),
+                                  child: Center(
+                                    child: PlatformProgressIndicator(),
+                                  ),
+                                ),
+                              const Divider(),
+                            ],
                           ),
-                        );
+                        ));
                       }),
                   StreamBuilder<BlocState<Podcast>>(
                       initialData: BlocEmptyState<Podcast>(),
@@ -343,31 +326,24 @@ class _PodcastDetailsState extends State<PodcastDetails> {
     );
   }
 
-  /// The podcast details app bar with the hero artwork header.
+  /// The podcast details toolbar.
   ///
-  /// While episodes are being selected the bar keeps its exact geometry - no
-  /// layout shift - and only its contents change: the back button becomes an
-  /// exit button, the title shows the selection count and the select all
-  /// action is offered. When the header is expanded (over the artwork) the
-  /// selection controls are rendered light with a soft shadow for legibility,
-  /// matching the style of the back button.
-  Widget _buildPodcastAppBar(ThemeData theme, PodcastBloc podcastBloc, PlaceholderBuilder? placeholderBuilder) {
+  /// The podcast title fades in once the user has scrolled past the compact
+  /// header. While episodes are being selected the bar switches to the
+  /// selection count with a close button and a select all action.
+  Widget _buildPodcastAppBar(ThemeData theme) {
     final selecting = _selection.selecting;
     final allSelected = _visibleEpisodes.isNotEmpty && _selection.containsAll(_visibleEpisodes);
-    final onArtwork = !toolbarCollapsed;
-    final selectionControlColor = onArtwork ? Colors.white : theme.appBarTheme.foregroundColor!;
-    final artworkShadow = onArtwork ? const [Shadow(blurRadius: 8.0, color: Color(0x8a000000))] : const <Shadow>[];
-    final topInset = MediaQuery.paddingOf(context).top;
+    final foregroundColour = theme.appBarTheme.foregroundColor!;
 
     return SliverAppBar(
-      systemOverlayStyle: _systemOverlayStyle,
       title: selecting
           ? AnimatedSwitcher(
               duration: const Duration(milliseconds: 150),
               child: Text(
                 L.of(context)!.episodes_selected_count(_selection.count),
                 key: ValueKey<int>(_selection.count),
-                style: theme.textTheme.titleLarge?.copyWith(color: selectionControlColor, shadows: artworkShadow),
+                style: theme.textTheme.titleLarge?.copyWith(color: foregroundColour),
               ),
             )
           : AnimatedOpacity(
@@ -377,17 +353,14 @@ class _PodcastDetailsState extends State<PodcastDetails> {
             ),
       leading: selecting
           ? _SelectionCloseButton(
-              iconColour: selectionControlColor,
-              decorationColour: onArtwork ? const Color(0x22000000) : const Color(0x00000000),
+              iconColour: foregroundColour,
+              decorationColour: const Color(0x00000000),
               onPressed: _exitSelection,
             )
           : PlatformBackButton(
-              iconColour: toolbarCollapsed && theme.brightness == Brightness.light
-                  ? theme.appBarTheme.foregroundColor!
-                  : Colors.white,
-              decorationColour: toolbarCollapsed ? const Color(0x00000000) : const Color(0x22000000),
+              iconColour: foregroundColour,
+              decorationColour: const Color(0x00000000),
               onPressed: () {
-                _resetSystemOverlayStyle();
                 Navigator.pop(context);
               },
             ),
@@ -396,8 +369,7 @@ class _PodcastDetailsState extends State<PodcastDetails> {
               IconButton(
                 icon: Icon(
                   allSelected ? Icons.deselect : Icons.select_all,
-                  color: selectionControlColor,
-                  shadows: artworkShadow,
+                  color: foregroundColour,
                 ),
                 tooltip: allSelected ? L.of(context)!.deselect_all_label : L.of(context)!.select_all_label,
                 onPressed: () {
@@ -410,62 +382,9 @@ class _PodcastDetailsState extends State<PodcastDetails> {
               ),
             ]
           : null,
-      expandedHeight: _expandedHeight,
       floating: false,
       pinned: true,
       snap: false,
-      flexibleSpace: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          FlexibleSpaceBar(
-            // The poster starts below the opaque status bar band so it is
-            // shown in full.
-            background: Padding(
-              padding: EdgeInsets.only(top: topInset),
-              child: Hero(
-                key: Key('detailhero${widget.podcast.imageUrl}:${widget.podcast.link}'),
-                tag: '${widget.podcast.imageUrl}:${widget.podcast.link}',
-                child: ExcludeSemantics(
-                  child: StreamBuilder<BlocState<Podcast>>(
-                      initialData: BlocEmptyState<Podcast>(),
-                      stream: podcastBloc.details,
-                      builder: (context, snapshot) {
-                        final state = snapshot.data;
-                        Podcast? podcast = widget.podcast;
-
-                        if (state is BlocLoadingState<Podcast>) {
-                          podcast = state.data;
-                        }
-
-                        if (state is BlocPopulatedState<Podcast>) {
-                          podcast = state.results;
-                        }
-
-                        return PodcastHeaderImage(
-                          podcast: podcast!,
-                          placeholderBuilder: placeholderBuilder,
-                        );
-                      }),
-                ),
-              ),
-            ),
-          ),
-          // Android 15+ no longer honours statusBarColor for apps targeting
-          // SDK 35, so paint an opaque band over the status bar area instead;
-          // the artwork then starts below it and the overlay icons stay
-          // legible. When the toolbar is collapsed the band blends invisibly
-          // into the solid app bar background.
-          Positioned(
-            top: 0.0,
-            left: 0.0,
-            right: 0.0,
-            height: topInset,
-            child: ColoredBox(
-              color: theme.appBarTheme.backgroundColor!,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -643,8 +562,7 @@ class _PodcastDetailsState extends State<PodcastDetails> {
 /// The close button shown in the app bar while episodes are being selected.
 ///
 /// Styled like [PlatformBackButton] - a circular decoration behind an icon -
-/// so it looks consistent whether the header is expanded over the artwork or
-/// collapsed onto the app bar.
+/// so it looks consistent with the back button beside it.
 class _SelectionCloseButton extends StatelessWidget {
   final Color iconColour;
   final Color decorationColour;
@@ -692,42 +610,54 @@ class _SelectionCloseButton extends StatelessWidget {
   }
 }
 
-/// Renders the podcast or episode image.
-class PodcastHeaderImage extends StatelessWidget {
-  const PodcastHeaderImage({
-    super.key,
-    required this.podcast,
-    required this.placeholderBuilder,
-  });
+/// Renders the podcast artwork in the compact header.
+///
+/// The artwork is a [Hero] so it animates from the podcast tile in the
+/// library, search results or discovery grid.
+class _PodcastArtwork extends StatelessWidget {
+  static const size = 96.0;
 
   final Podcast podcast;
   final PlaceholderBuilder? placeholderBuilder;
 
+  const _PodcastArtwork({
+    required this.podcast,
+    required this.placeholderBuilder,
+  });
+
   @override
   Widget build(BuildContext context) {
-    if (podcast.imageUrl == null || podcast.imageUrl!.isEmpty) {
-      return const SizedBox(
-        height: 560,
-        width: 560,
-      );
-    }
+    final imageUrl = podcast.imageUrl;
 
-    return PodcastBannerImage(
-      key: Key('details${podcast.imageUrl}'),
-      url: podcast.imageUrl!,
-      fit: BoxFit.cover,
-      placeholder: placeholderBuilder != null
-          ? placeholderBuilder?.builder()(context)
-          : const DelayedCircularProgressIndicator(),
-      errorPlaceholder: placeholderBuilder != null
-          ? placeholderBuilder?.errorBuilder()(context)
-          : const Image(image: AssetImage('assets/images/anytime-placeholder-logo.png')),
+    return Hero(
+      tag: '${podcast.imageUrl}:${podcast.link}',
+      child: ExcludeSemantics(
+        child: imageUrl == null || imageUrl.isEmpty
+            ? Container(
+                height: size,
+                width: size,
+                color: Theme.of(context).dividerColor,
+              )
+            : PodcastImage(
+                key: Key('details${podcast.imageUrl}'),
+                url: imageUrl,
+                width: size,
+                height: size,
+                borderRadius: 12.0,
+                placeholder: placeholderBuilder != null
+                    ? placeholderBuilder?.builder()(context)
+                    : const DelayedCircularProgressIndicator(),
+                errorPlaceholder: placeholderBuilder != null
+                    ? placeholderBuilder?.errorBuilder()(context)
+                    : const Image(image: AssetImage('assets/images/anytime-placeholder-logo.png')),
+              ),
+      ),
     );
   }
 }
 
-/// Renders the podcast title, copyright, description, follow/unfollow and
-/// overflow button.
+/// Renders the compact podcast header - artwork, title, copyright,
+/// description, follow/unfollow and overflow button.
 ///
 /// If the episode description is fairly long, an overflow icon is also shown
 /// and a portion of the episode description is shown. Tapping the overflow
@@ -769,6 +699,7 @@ class _PodcastTitleState extends State<PodcastTitle> with SingleTickerProviderSt
     final theme = Theme.of(context);
     final settings = Provider.of<SettingsBloc>(context, listen: false).currentSettings;
     final podcastBloc = Provider.of<PodcastBloc>(context, listen: false);
+    final placeholderBuilder = PlaceholderBuilder.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 0.0),
@@ -776,25 +707,40 @@ class _PodcastTitleState extends State<PodcastTitle> with SingleTickerProviderSt
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          // Compact header: the artwork sits beside the title so the episode
+          // list begins much higher up the screen than with the old poster
+          // header.
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              _PodcastArtwork(podcast: widget.podcast, placeholderBuilder: placeholderBuilder),
               Expanded(
                 child: MergeSemantics(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 2.0),
-                        child: Text(widget.podcast.title, style: theme.textTheme.titleLarge),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-                        child: Text(widget.podcast.copyright ?? '', style: theme.textTheme.bodySmall),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.podcast.title,
+                          style: theme.textTheme.titleLarge,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if ((widget.podcast.copyright ?? '').isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2.0),
+                            child: Text(
+                              widget.podcast.copyright!,
+                              style: theme.textTheme.bodySmall,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -921,20 +867,45 @@ class _PodcastTitleState extends State<PodcastTitle> with SingleTickerProviderSt
   void initState() {
     super.initState();
 
+    _initDescription();
+
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      _checkDescriptionOverflow();
+    });
+  }
+
+  @override
+  void didUpdateWidget(PodcastTitle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // When the feed finishes loading we may receive richer podcast details
+    // than the stub the user navigated here with - refresh the description.
+    if (widget.podcast.description != oldWidget.podcast.description) {
+      _initDescription();
+
+      WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+        _checkDescriptionOverflow();
+      });
+    }
+  }
+
+  void _initDescription() {
     description = PodcastHtml(
       key: ValueKey(widget.podcast.url),
-      content: widget.podcast.description!,
+      content: widget.podcast.description ?? '',
       fontSize: FontSize.medium,
       clipboard: false,
     );
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      if (descriptionKey.currentContext!.size!.height == maxHeight) {
-        setState(() {
-          showOverflow = true;
-        });
-      }
-    });
+  void _checkDescriptionOverflow() {
+    final descriptionContext = descriptionKey.currentContext;
+
+    if (mounted && descriptionContext != null && descriptionContext.size != null) {
+      setState(() {
+        showOverflow = descriptionContext.size!.height == maxHeight;
+      });
+    }
   }
 
   @override

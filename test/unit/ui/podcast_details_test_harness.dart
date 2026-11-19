@@ -11,6 +11,7 @@ import 'package:anytime/bloc/podcast/episode_bloc.dart';
 import 'package:anytime/bloc/podcast/podcast_bloc.dart';
 import 'package:anytime/bloc/podcast/queue_bloc.dart';
 import 'package:anytime/bloc/settings/settings_bloc.dart';
+import 'package:anytime/bloc/ui/pager_bloc.dart';
 import 'package:anytime/entities/app_settings.dart';
 import 'package:anytime/entities/downloadable.dart';
 import 'package:anytime/entities/episode.dart';
@@ -315,10 +316,14 @@ class FakeSettingsService implements SettingsService {
 /// Pumps the full [PodcastDetails] page with the app's theme, localisations
 /// and blocs wired to the in-memory services, and settles the initial feed
 /// load so the episode list is rendered.
+///
+/// [onReady] runs once the page has been pumped but before the load is
+/// settled; use it to emit playback state so the mini player renders.
 Future<void> pumpPodcastDetails(
   WidgetTester tester, {
   required ThemeData theme,
   required Podcast podcast,
+  void Function(PodcastDetailsTestAudioPlayerService audioPlayerService)? onReady,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3.0;
@@ -340,6 +345,8 @@ Future<void> pumpPodcastDetails(
     settingsService: FakeSettingsService(),
     notificationService: FakeNotificationService(),
   );
+  // The embedded bottom navigation bar reads the pager for the selected tab.
+  final pagerBloc = PagerBloc();
 
   addTearDown(() {
     podcastBloc.dispose();
@@ -348,6 +355,7 @@ Future<void> pumpPodcastDetails(
     settingsBloc.dispose();
     audioBloc.dispose();
     audioPlayerService.disposeService();
+    pagerBloc.dispose();
     podcastService._episodeSubject.close();
     podcastService._podcastSubject.close();
   });
@@ -360,6 +368,7 @@ Future<void> pumpPodcastDetails(
         Provider<QueueBloc>.value(value: queueBloc),
         Provider<AudioBloc>.value(value: audioBloc),
         Provider<SettingsBloc>.value(value: settingsBloc),
+        Provider<PagerBloc>.value(value: pagerBloc),
       ],
       child: RepaintBoundary(
         key: const Key('root-shot-boundary'),
@@ -394,6 +403,8 @@ Future<void> pumpPodcastDetails(
       ),
     ),
   );
+
+  onReady?.call(audioPlayerService);
 
   // Settle the feed load: loading state, populated podcast and episode list.
   await tester.pump(const Duration(milliseconds: 200));
