@@ -1,3 +1,15 @@
+## 1.4.8
+
+- Redesign the podcast page: the artwork is now a compact header beside
+  the title and publisher, so the episode list starts much higher up
+  the screen.
+- Keep the mini player and the bottom navigation bar visible while
+  browsing a podcast; tapping a bottom tab from a podcast switches to
+  it and closes the page.
+- The podcast title fades into the toolbar once the header scrolls out
+  of view, and the bulk selection action bar sits above the player and
+  bottom bar.
+
 ## 1.4.7
 
 - Keep the status bar visible on the podcast page. On Android 15+ the
