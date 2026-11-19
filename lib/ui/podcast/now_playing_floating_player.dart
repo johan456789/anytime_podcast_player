@@ -76,7 +76,10 @@ class _FloatingPlayerBuilderState extends State<_FloatingPlayerBuilder> with Sin
     final placeholderBuilder = PlaceholderBuilder.of(context);
 
     return Container(
-      height: 64,
+      // Tall enough for the content row plus the progress bar strip below it:
+      // the playhead needs clearance both above (artwork) and below (the
+      // options sheet starts flush against this player's bottom edge).
+      height: 84,
       color: theme.canvasColor,
       child: Stack(
         clipBehavior: Clip.none,
@@ -94,13 +97,13 @@ class _FloatingPlayerBuilderState extends State<_FloatingPlayerBuilder> with Sin
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(6.0),
                             child: snapshot.hasData
                                 ? PodcastImage(
                                     key: Key('float${snapshot.data!.imageUrl}'),
                                     url: snapshot.data!.imageUrl!,
-                                    width: 58.0,
-                                    height: 58.0,
+                                    width: 54.0,
+                                    height: 54.0,
                                     borderRadius: 4.0,
                                     placeholder: placeholderBuilder != null
                                         ? placeholderBuilder.builder()(context)
@@ -201,10 +204,13 @@ class _FloatingPlayerBuilderState extends State<_FloatingPlayerBuilder> with Sin
                       );
                     });
               }),
+          // Lifted off the bottom edge so the playhead does not sit on the
+          // sheet that starts directly below this player when the options
+          // panel is expanded.
           const Positioned(
             left: 0.0,
             right: 0.0,
-            bottom: 0.0,
+            bottom: 6.0,
             child: MiniPlayerProgressBar(),
           ),
         ],
